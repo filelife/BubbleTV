@@ -31,12 +31,18 @@ class RedisManager:
         key = f'task:{task_id}'
         return self.redis_client.hgetall(key)
     
-    def update_task_status(self, task_id, status, progress=None):
+    def update_task_status(self, task_id, status, progress=None, save_path=None):
         key = f'task:{task_id}'
         self.redis_client.hset(key, 'status', status)
         self.redis_client.hset(key, 'updated_at', datetime.now().isoformat())
         if progress is not None:
             self.redis_client.hset(key, 'progress', str(progress))
+        if save_path is not None:
+            self.redis_client.hset(key, 'save_path', save_path)
+    
+    def update_task_download_speed(self, task_id, speed):
+        key = f'task:{task_id}'
+        self.redis_client.hset(key, 'download_speed', speed)
     
     def set_video(self, video_id, video_data):
         key = f'video:{video_id}'

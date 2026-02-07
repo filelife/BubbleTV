@@ -209,6 +209,63 @@ def get_videos():
             'message': str(e)
         }), 500
 
+@app.route('/api/videos/scan', methods=['POST'])
+def scan_videos():
+    try:
+        storage_path = storage_manager.get_storage_path()
+        
+        if not os.path.exists(storage_path):
+            return jsonify({
+                'success': False,
+                'message': '存储目录不存在'
+            }), 404
+        
+        scanned_videos = []
+        video_extensions = ['.mp4', '.mov', '.avi', '.mkv', '.flv', '.m4v']
+        
+        for root, dirs, files in os.walk(storage_path):
+            for file in files:
+                file_ext = os.path.splitext(file)[1].lower()
+                if file_ext in video_extensions:
+                    file_path = os.path.join(root, file)
+                    file_size = os.path.getsize(file_path)
+                    
+                    relative_path = os.path.relpath(file_path, storage_path)
+                    path_parts = relative_path.split(os.sep)
+                    
+                    if len(path_parts) >= 2:
+                        platform = path_parts[0]
+                        title = path_parts[1]
+                    else:
+                        platform = 'unknown'
+                        title = os.path.splitext(file)[0]
+                    
+                    video_id = str(uuid.uuid4())
+                    video_data = {
+                        'id': video_id,
+                        'task_id': '',
+                        'title': title,
+                        'url': '',
+                        'platform': platform,
+                        'video_type': '短视频',
+                        'save_path': file_path,
+                        'created_at': time.strftime('%Y-%m-%d %H:%M:%S')
+                    }
+                    
+                    redis_manager.set_video(video_id, video_data)
+                    scanned_videos.append(video_data)
+        
+        return jsonify({
+            'success': True,
+            'message': f'扫描完成，共发现 {len(scanned_videos)} 个视频文件',
+            'videos': scanned_videos
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
 @app.route('/api/videos/search', methods=['GET'])
 def search_videos():
     try:
@@ -348,9 +405,8 @@ def open_directory():
             }), 400
         
         if platform == 'macos':
-            script = f'tell application "Finder" to open POSIX file "{path}"'
-            
             import subprocess
+            script = f'tell application "Finder" to open POSIX file "{path}"'
             subprocess.run(['osascript', '-e', script])
         elif platform == 'windows':
             import os
@@ -472,6 +528,13 @@ def process_download_queue():
             )
             
             if success:
+                task = redis_manager.get_task(task_id)
+                downloaded_path = task.get('save_path')
+                
+                if not downloaded_path or not os.path.exists(downloaded_path):
+                    redis_manager.update_task_status(task_id, 'failed')
+                    continue
+                
                 video_info = video_parser.parse_video_info(task_data.get('url'))
                 video_path = os.path.join(
                     storage_path,
@@ -481,7 +544,7 @@ def process_download_queue():
                 )
                 
                 transcode_success, transcode_message = video_transcoder.transcode_video(
-                    task_data.get('save_path'),
+                    downloaded_path,
                     video_path,
                     task_id
                 )
@@ -499,13 +562,34 @@ def process_download_queue():
                     }
                     
                     redis_manager.set_video(video_data['id'], video_data)
-                    redis_manager.update_task_status(task_id, 'completed', progress=100)
+                    redis_manager.update_task_status(task_id, 'completed', progress=100, save_path=video_path)
                 else:
-                    redis_manager.update_task_status(task_id, 'failed')
+                    if os.path.exists(downloaded_path):
+                        video_data = {
+                            'id': str(uuid.uuid4()),
+                            'task_id': task_id,
+                            'title': video_info['title'],
+                            'url': task_data.get('url'),
+                            'platform': video_info['platform'],
+                            'video_type': video_info['video_type'],
+                            'save_path': downloaded_path,
+                            'created_at': time.strftime('%Y-%m-%d %H:%M:%S')
+                        }
+                        
+                        redis_manager.set_video(video_data['id'], video_data)
+                        redis_manager.update_task_status(task_id, 'completed', progress=100, save_path=downloaded_path)
+                    else:
+                        redis_manager.update_task_status(task_id, 'failed')
+            else:
+                redis_manager.update_task_status(task_id, 'failed')
         else:
             time.sleep(1)
 
 if __name__ == '__main__':
+    import logging
+    log = logging.getLogger('werkzeug')
+    log.setLevel(logging.ERROR)
+    
     download_thread = threading.Thread(target=process_download_queue, daemon=True)
     download_thread.start()
     

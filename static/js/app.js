@@ -5,6 +5,10 @@ document.addEventListener('DOMContentLoaded', function() {
     checkMigrationStatus();
     setupEventListeners();
     createMessageModal();
+    
+    setInterval(() => {
+        loadTasks();
+    }, 2000);
 });
 
 function createMessageModal() {
@@ -54,7 +58,10 @@ function showMessage(title, message) {
     titleElement.textContent = title;
     contentElement.textContent = message;
     
-    const bsModal = new bootstrap.Modal(modal);
+    let bsModal = bootstrap.Modal.getInstance(modal);
+    if (!bsModal) {
+        bsModal = new bootstrap.Modal(modal);
+    }
     bsModal.show();
 }
 
@@ -104,6 +111,7 @@ function setupEventListeners() {
     document.getElementById('change-storage-btn').addEventListener('click', handleChangeStorage);
     document.getElementById('search-btn').addEventListener('click', handleSearch);
     document.getElementById('search-input').addEventListener('input', handleRealTimeSearch);
+    document.getElementById('scan-videos-btn').addEventListener('click', handleScanVideos);
     
     document.getElementById('login-bilibili-btn').addEventListener('click', () => handleLogin('bilibili', 'auto'));
     document.getElementById('login-douyin-btn').addEventListener('click', () => handleLogin('douyin', 'auto'));
@@ -113,20 +121,39 @@ function setupEventListeners() {
     document.getElementById('save-douyin-cookie-btn').addEventListener('click', () => handleManualLogin('douyin'));
     document.getElementById('save-toutiao-cookie-btn').addEventListener('click', () => handleManualLogin('toutiao'));
     
+    document.getElementById('copyMessageBtn').addEventListener('click', copyMessageContent);
+    
     setupDragAndDrop();
 }
 
 function handleDownloadSubmit(e) {
     e.preventDefault();
     
-    const url = document.getElementById('video-url').value.trim();
+    let url = document.getElementById('video-url').value.trim();
     
     if (!url) {
         showMessage('提示', '请输入视频链接');
         return;
     }
     
-    addTask(url);
+    const extractedUrl = extractUrl(url);
+    if (!extractedUrl) {
+        showMessage('错误', '无法识别有效的视频链接，请检查输入内容');
+        return;
+    }
+    
+    if (extractedUrl !== url) {
+        showMessage('提示', '已从输入内容中提取视频链接');
+        document.getElementById('video-url').value = extractedUrl;
+    }
+    
+    addTask(extractedUrl);
+}
+
+function extractUrl(text) {
+    const urlPattern = /(https?:\/\/[^\s\]\`'"]+)/;
+    const match = text.match(urlPattern);
+    return match ? match[1] : null;
 }
 
 function addTask(url) {
@@ -171,6 +198,33 @@ function loadTasks() {
     });
 }
 
+function handleScanVideos() {
+    const btn = document.getElementById('scan-videos-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 扫描中...';
+    
+    fetch('/api/videos/scan', {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showMessage('扫描完成', data.message);
+            loadVideos();
+        } else {
+            showMessage('扫描失败', '扫描失败：' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error scanning videos:', error);
+        showMessage('网络错误', '网络错误，请稍后重试');
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa fa-refresh"></i> 检测资源';
+    });
+}
+
 function displayTasks(tasks) {
     const container = document.getElementById('task-container');
     
@@ -187,7 +241,8 @@ function displayTasks(tasks) {
         const progressHtml = task.status === 'downloading' ? 
             `<div class="progress">
                 <div class="progress-bar bg-info" style="width: ${task.progress}%"></div>
-            </div>` : '';
+            </div>
+            <small class="text-muted">下载速度: ${task.download_speed || '计算中...'}</small>` : '';
         const actionButtons = getActionButtons(task);
         
         html += `

@@ -55,8 +55,8 @@ class VideoTranscoder:
             if task_id:
                 self._monitor_progress(process, task_id)
             
-            return_code = process.wait()
             stdout, stderr = process.communicate()
+            return_code = process.returncode
             
             if return_code == 0:
                 return True, '转码成功'

@@ -235,13 +235,16 @@
             
             <!-- Tab2: 已下载资源 -->
             <div class="tab-pane fade" id="tab2" role="tabpanel" aria-labelledby="tab2-tab">
-                <div class="search-container d-flex justify-content-end">
+                <div class="search-container d-flex justify-content-between align-items-center">
                     <div class="input-group" style="width: 300px;">
                         <input type="text" class="form-control" id="search-input" placeholder="搜索文件或文件夹">
                         <button class="btn btn-outline-secondary" type="button" id="search-btn">
                             <i class="fa fa-search"></i>
                         </button>
                     </div>
+                    <button class="btn btn-primary" id="scan-videos-btn">
+                        <i class="fa fa-refresh"></i> 检测资源
+                    </button>
                 </div>
                 
                 <div class="tree-view">
@@ -281,6 +284,29 @@
         
         <div class="footer">
             <p>© 2026 泡泡看视频. 保留所有权利。</p>
+        </div>
+    </div>
+    
+    <!-- 消息模态框 -->
+    <div class="modal fade" id="messageModal" tabindex="-1" aria-labelledby="messageModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="messageModalTitle">提示</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="messageModalContent"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="copyMessageBtn">
+                        <i class="fa fa-copy"></i> 复制内容
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fa fa-check"></i> 确定
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
     
