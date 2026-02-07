@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>泡泡看视频</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 900px;
+            margin: 20px auto;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background-color: #343a40;
+            color: #fff;
+            padding: 15px;
+            text-align: center;
+            position: relative;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .tab-content {
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .task-list {
+            margin-top: 20px;
+        }
+        .task-item {
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 10px;
+            background-color: #f9f9f9;
+        }
+        .task-item.completed {
+            border-left: 4px solid #28a745;
+        }
+        .task-item.failed {
+            border-left: 4px solid #dc3545;
+        }
+        .progress {
+            margin: 10px 0;
+        }
+        .tree-view {
+            margin-top: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 15px;
+            background-color: #f9f9f9;
+        }
+        .tree-node {
+            margin-left: 20px;
+            padding: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .tree-node.folder {
+            font-weight: bold;
+        }
+        .tree-node.file {
+            color: #6c757d;
+        }
+        .tree-node.draggable {
+            cursor: move;
+        }
+        .tree-node.draggable:hover {
+            background-color: #e9ecef;
+        }
+        .tree-node.drag-over {
+            background-color: #d1ecf1;
+            border: 2px dashed #0c5460;
+        }
+        .tree-node.dragging {
+            opacity: 0.5;
+        }
+        .search-container {
+            margin-bottom: 20px;
+        }
+        .storage-info {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+        .storage-path {
+            font-family: monospace;
+            background-color: #f0f0f0;
+            padding: 8px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .migration-option {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .migration-option:hover {
+            border-color: #007bff;
+            background-color: #e9ecef;
+        }
+        .migration-option.selected {
+            border-color: #007bff;
+            background-color: #e9ecef;
+        }
+        .migration-progress {
+            margin-top: 15px;
+        }
+        .auto-detect-badge {
+            background-color: #28a745;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .login-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .login-status.logged-in {
+            background-color: #28a745;
+            color: white;
+        }
+        .login-status.logged-out {
+            background-color: #dc3545;
+            color: white;
+        }
+        .platform-login {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+        .platform-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        .bilibili-icon {
+            color: #00a1d6;
+        }
+        .douyin-icon {
+            color: #000000;
+        }
+        .toutiao-icon {
+            color: #f85959;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 15px;
+            text-align: center;
+            border-top: 1px solid #e0e0e0;
+        }
+        .btn {
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>泡泡看视频</h1>
+            <p>自动视频下载应用</p>
+            <div style="position: absolute; top: 15px; right: 15px;">
+                <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#loginModal">
+                    <i class="fa fa-sign-in"></i> 账号登录
+                </button>
+            </div>
+        </div>
+        
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab1-tab" data-bs-toggle="tab" data-bs-target="#tab1" type="button" role="tab" aria-controls="tab1" aria-selected="true">
+                    <i class="fa fa-download"></i> 下载任务
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab2-tab" data-bs-toggle="tab" data-bs-target="#tab2" type="button" role="tab" aria-controls="tab2" aria-selected="false">
+                    <i class="fa fa-folder-open"></i> 已下载资源
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab3-tab" data-bs-toggle="tab" data-bs-target="#tab3" type="button" role="tab" aria-controls="tab3" aria-selected="false">
+                    <i class="fa fa-hdd-o"></i> 存储设置
+                </button>
+            </li>
+        </ul>
+        
+        <div class="tab-content" id="myTabContent">
+            <!-- Tab1: 下载任务 -->
+            <div class="tab-pane fade show active" id="tab1" role="tabpanel" aria-labelledby="tab1-tab">
+                <form id="download-form">
+                    <div class="form-group">
+                        <label for="video-url" class="form-label">视频链接</label>
+                        <input type="text" class="form-control" id="video-url" placeholder="请输入抖音、今日头条或Bilibili的视频链接">
+                        <small class="form-text text-muted">
+                            <i class="fa fa-info-circle"></i> 系统将自动识别视频平台和类型
+                        </small>
+                    </div>
+                    <button type="submit" class="btn btn-primary mt-3">
+                        <i class="fa fa-download"></i> 开始下载
+                    </button>
+                </form>
+                
+                <div class="task-list">
+                    <h3>下载任务列表</h3>
+                    <div id="task-container">
+                        <div class="text-center text-muted">
+                            <i class="fa fa-spinner fa-spin"></i> 加载中...
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tab2: 已下载资源 -->
+            <div class="tab-pane fade" id="tab2" role="tabpanel" aria-labelledby="tab2-tab">
+                <div class="search-container d-flex justify-content-end">
+                    <div class="input-group" style="width: 300px;">
+                        <input type="text" class="form-control" id="search-input" placeholder="搜索文件或文件夹">
+                        <button class="btn btn-outline-secondary" type="button" id="search-btn">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="tree-view">
+                    <h3>已下载资源</h3>
+                    <p class="text-muted"><small><i class="fa fa-hand-pointer"></i> 提示：可以拖拽文件或文件夹到其他目录</small></p>
+                    <div id="tree-container">
+                        <div class="text-center text-muted">
+                            <i class="fa fa-spinner fa-spin"></i> 加载中...
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tab3: 存储设置 -->
+            <div class="tab-pane fade" id="tab3" role="tabpanel" aria-labelledby="tab3-tab">
+                <div class="storage-info">
+                    <h4><i class="fa fa-hdd-o"></i> 存储目录设置</h4>
+                    <div class="mt-3">
+                        <label class="form-label">当前存储目录</label>
+                        <div class="storage-path" id="current-storage-path">
+                            /Users/username/Downloads/Videos
+                        </div>
+                        <button class="btn btn-primary mt-2" id="change-storage-btn">
+                            <i class="fa fa-exchange"></i> 更换存储目录
+                        </button>
+                    </div>
+                    <div class="alert alert-info mt-3">
+                        <i class="fa fa-info-circle"></i>
+                        <small>
+                            首次下载时系统会提示您选择存储目录，之后您可以随时更换存储目录。
+                            更换目录时可以选择是否将已下载资源迁移到新目录。
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>© 2026 泡泡看视频. 保留所有权利。</p>
+        </div>
+    </div>
+    
+    <!-- 登录模态框 -->
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fa fa-sign-in"></i> 平台账号登录
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="platform-login text-center">
+                                <div class="platform-icon bilibili-icon">
+                                    <i class="fa fa-tv"></i>
+                                </div>
+                                <h6>Bilibili</h6>
+                                <div class="login-status logged-out" id="bilibili-status">
+                                    <i class="fa fa-times-circle"></i> 未登录
+                                </div>
+                                <button class="btn btn-primary btn-sm mt-2" id="login-bilibili-btn">
+                                    <i class="fa fa-sign-in"></i> 登录
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="platform-login text-center">
+                                <div class="platform-icon douyin-icon">
+                                    <i class="fa fa-music"></i>
+                                </div>
+                                <h6>抖音</h6>
+                                <div class="login-status logged-out" id="douyin-status">
+                                    <i class="fa fa-times-circle"></i> 未登录
+                                </div>
+                                <button class="btn btn-primary btn-sm mt-2" id="login-douyin-btn">
+                                    <i class="fa fa-sign-in"></i> 登录
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="platform-login text-center">
+                                <div class="platform-icon toutiao-icon">
+                                    <i class="fa fa-newspaper-o"></i>
+                                </div>
+                                <h6>今日头条</h6>
+                                <div class="login-status logged-out" id="toutiao-status">
+                                    <i class="fa fa-times-circle"></i> 未登录
+                                </div>
+                                <button class="btn btn-primary btn-sm mt-2" id="login-toutiao-btn">
+                                    <i class="fa fa-sign-in"></i> 登录
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-info mt-3">
+                        <i class="fa fa-info-circle"></i>
+                        <small>
+                            登录后系统将自动保存Cookie，用于后续视频下载，避免因未认证导致下载失败。
+                            Cookie信息将加密存储在本地数据库中。
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fa fa-times"></i> 关闭
+                    </button>
+                </div>
+            </div>
+        </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

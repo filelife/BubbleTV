@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>泡泡看视频 原型图</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 900px;
+            margin: 20px auto;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background-color: #343a40;
+            color: #fff;
+            padding: 15px;
+            text-align: center;
+            position: relative;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .tab-content {
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .task-list {
+            margin-top: 20px;
+        }
+        .task-item {
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 10px;
+            background-color: #f9f9f9;
+        }
+        .task-item.completed {
+            border-left: 4px solid #28a745;
+        }
+        .task-item.failed {
+            border-left: 4px solid #dc3545;
+        }
+        .progress {
+            margin: 10px 0;
+        }
+        .tree-view {
+            margin-top: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 15px;
+            background-color: #f9f9f9;
+        }
+        .tree-node {
+            margin-left: 20px;
+            padding: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .tree-node.folder {
+            font-weight: bold;
+        }
+        .tree-node.file {
+            color: #6c757d;
+        }
+        .tree-node.draggable {
+            cursor: move;
+        }
+        .tree-node.draggable:hover {
+            background-color: #e9ecef;
+        }
+        .tree-node.drag-over {
+            background-color: #d1ecf1;
+            border: 2px dashed #0c5460;
+        }
+        .tree-node.dragging {
+            opacity: 0.5;
+        }
+        .search-container {
+            margin-bottom: 20px;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 15px;
+            text-align: center;
+            border-top: 1px solid #e0e0e0;
+        }
+        .btn {
+            margin-right: 5px;
+        }
+        .auto-detect-badge {
+            background-color: #28a745;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .login-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .login-status.logged-in {
+            background-color: #28a745;
+            color: white;
+        }
+        .login-status.logged-out {
+            background-color: #dc3545;
+            color: white;
+        }
+        .platform-login {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+        .platform-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        .bilibili-icon {
+            color: #00a1d6;
+        }
+        .douyin-icon {
+            color: #000000;
+        }
+        .toutiao-icon {
+            color: #f85959;
+        }
+        .storage-info {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+        .storage-path {
+            font-family: monospace;
+            background-color: #f0f0f0;
+            padding: 8px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .migration-option {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .migration-option:hover {
+            border-color: #007bff;
+            background-color: #e9ecef;
+        }
+        .migration-option.selected {
+            border-color: #007bff;
+            background-color: #e9ecef;
+        }
+        .migration-progress {
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>泡泡看视频</h1>
+            <p>自动视频下载应用</p>
+            <div style="position: absolute; top: 15px; right: 15px;">
+                <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#loginModal">
+                    <i class="fa fa-sign-in"></i> 账号登录
+                </button>
+            </div>
+        </div>
+        
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab1-tab" data-bs-toggle="tab" data-bs-target="#tab1" type="button" role="tab" aria-controls="tab1" aria-selected="true">
+                    <i class="fa fa-download"></i> 下载任务
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab2-tab" data-bs-toggle="tab" data-bs-target="#tab2" type="button" role="tab" aria-controls="tab2" aria-selected="false">
+                    <i class="fa fa-folder-open"></i> 已下载资源
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab3-tab" data-bs-toggle="tab" data-bs-target="#tab3" type="button" role="tab" aria-controls="tab3" aria-selected="false">
+                    <i class="fa fa-hdd-o"></i> 存储设置
+                </button>
+            </li>
+        </ul>
+        
+        <div class="tab-content" id="myTabContent">
+            <!-- Tab1: 下载任务 -->
+            <div class="tab-pane fade show active" id="tab1" role="tabpanel" aria-labelledby="tab1-tab">
+                <form id="download-form">
+                    <div class="form-group">
+                        <label for="video-url" class="form-label">视频链接</label>
+                        <input type="text" class="form-control" id="video-url" placeholder="请输入抖音、今日头条或Bilibili的视频链接">
+                        <small class="form-text text-muted">
+                            <i class="fa fa-info-circle"></i> 系统将自动识别视频平台和类型
+                        </small>
+                    </div>
+                    <button type="submit" class="btn btn-primary mt-3">
+                        <i class="fa fa-download"></i> 开始下载
+                    </button>
+                </form>
+                
+                <div class="task-list">
+                    <h3>下载任务列表</h3>
+                    
+                    <div class="task-item">
+                        <div class="d-flex justify-content-between">
+                            <h5>抖音视频 - 精彩瞬间 <span class="auto-detect-badge">自动识别</span></h5>
+                            <span class="badge bg-info">下载中</span>
+                        </div>
+                        <p class="text-muted">https://www.douyin.com/video/1234567890</p>
+                        <div class="progress">
+                            <div class="progress-bar bg-info" role="progressbar" style="width: 65%" aria-valuenow="65" aria-valuemin="0" aria-valuemax="100">65%</div>
+                        </div>
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-secondary"><i class="fa fa-pause"></i> 暂停</button>
+                            <button class="btn btn-sm btn-danger"><i class="fa fa-times"></i> 取消</button>
+                        </div>
+                    </div>
+                    
+                    <div class="task-item completed">
+                        <div class="d-flex justify-content-between">
+                            <h5>Bilibili视频 - 技术教程 <span class="auto-detect-badge">自动识别</span></h5>
+                            <span class="badge bg-success">已完成</span>
+                        </div>
+                        <p class="text-muted">https://www.bilibili.com/video/BV1234567890</p>
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-primary"><i class="fa fa-folder-open"></i> 打开</button>
+                            <button class="btn btn-sm btn-danger"><i class="fa fa-trash"></i> 删除</button>
+                        </div>
+                    </div>
+                    
+                    <div class="task-item failed">
+                        <div class="d-flex justify-content-between">
+                            <h5>今日头条视频 - 新闻资讯 <span class="auto-detect-badge">自动识别</span></h5>
+                            <span class="badge bg-danger">下载失败</span>
+                        </div>
+                        <p class="text-muted">https://www.toutiao.com/video/1234567890</p>
+                        <p class="text-danger">错误信息：网络连接超时</p>
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-primary"><i class="fa fa-refresh"></i> 重试</button>
+                            <button class="btn btn-sm btn-danger"><i class="fa fa-trash"></i> 删除</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tab2: 已下载资源 -->
+            <div class="tab-pane fade" id="tab2" role="tabpanel" aria-labelledby="tab2-tab">
+                <div class="search-container d-flex justify-content-end">
+                    <div class="input-group" style="width: 300px;">
+                        <input type="text" class="form-control" placeholder="搜索文件或文件夹">
+                        <button class="btn btn-outline-secondary" type="button">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="tree-view">
+                    <h3>已下载资源</h3>
+                    <p class="text-muted"><small><i class="fa fa-hand-pointer"></i> 提示：可以拖拽文件或文件夹到其他目录</small></p>
+                    
+                    <div class="tree-node folder draggable" draggable="true" data-type="folder">
+                        <i class="fa fa-folder"></i> 短视频
+                        <div class="tree-node file draggable" draggable="true" data-type="file">
+                            <i class="fa fa-file-video-o"></i> 抖音视频 - 精彩瞬间.mp4
+                        </div>
+                        <div class="tree-node file draggable" draggable="true" data-type="file">
+                            <i class="fa fa-file-video-o"></i> 抖音视频 - 生活日常.mp4
+                        </div>
+                    </div>
+                    
+                    <div class="tree-node folder draggable" draggable="true" data-type="folder">
+                        <i class="fa fa-folder"></i> 影视剧
+                        <div class="tree-node folder draggable" draggable="true" data-type="folder">
+                            <i class="fa fa-folder"></i> 电视剧
+                            <div class="tree-node folder draggable" draggable="true" data-type="folder">
+                                <i class="fa fa-folder"></i> 热门剧集
+                                <div class="tree-node file draggable" draggable="true" data-type="file">
+                                    <i class="fa fa-file-video-o"></i> 剧集1.mp4
+                                </div>
+                                <div class="tree-node file draggable" draggable="true" data-type="file">
+                                    <i class="fa fa-file-video-o"></i> 剧集2.mp4
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tree-node folder draggable" draggable="true" data-type="folder">
+                            <i class="fa fa-folder"></i> 电影
+                            <div class="tree-node file draggable" draggable="true" data-type="file">
+                                <i class="fa fa-file-video-o"></i> 电影1.mp4
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tab3: 存储设置 -->
+            <div class="tab-pane fade" id="tab3" role="tabpanel" aria-labelledby="tab3-tab">
+                <div class="storage-info">
+                    <h4><i class="fa fa-hdd-o"></i> 存储目录设置</h4>
+                    <div class="mt-3">
+                        <label class="form-label">当前存储目录</label>
+                        <div class="storage-path" id="current-storage-path">
+                            /Users/username/Downloads/Videos
+                        </div>
+                        <button class="btn btn-primary mt-2" onclick="changeStorageDirectory()">
+                            <i class="fa fa-exchange"></i> 更换存储目录
+                        </button>
+                    </div>
+                    <div class="alert alert-info mt-3">
+                        <i class="fa fa-info-circle"></i>
+                        <small>
+                            首次下载时系统会提示您选择存储目录，之后您可以随时更换存储目录。
+                            更换目录时可以选择是否将已下载资源迁移到新目录。
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>© 2026 泡泡看视频. 保留所有权利。</p>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 模拟表单提交
+        document.getElementById('download-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert('下载任务已添加到队列');
+        });
+        
+        // 模拟树状结构展开/折叠
+        document.querySelectorAll('.tree-node.folder').forEach(function(node) {
+            node.addEventListener('click', function(e) {
+                if (e.target === this || e.target.tagName === 'I') {
+                    const children = this.querySelectorAll('.tree-node');
+                    children.forEach(function(child) {
+                        if (child.style.display === 'none') {
+                            child.style.display = 'block';
+                        } else {
+                            child.style.display = 'none';
+                        }
+                    });
+                }
+            });
+        });
+        
+        // 拖拽功能实现
+        let draggedElement = null;
+        
+        document.querySelectorAll('.tree-node.draggable').forEach(function(node) {
+            // 开始拖拽
+            node.addEventListener('dragstart', function(e) {
+                draggedElement = this;
+                this.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/html', this.innerHTML);
+            });
+            
+            // 拖拽结束
+            node.addEventListener('dragend', function(e) {
+                this.classList.remove('dragging');
+                document.querySelectorAll('.tree-node').forEach(function(n) {
+                    n.classList.remove('drag-over');
+                });
+            });
+            
+            // 拖拽进入
+            node.addEventListener('dragenter', function(e) {
+                e.preventDefault();
+                if (this !== draggedElement && this.classList.contains('folder')) {
+                    this.classList.add('drag-over');
+                }
+            });
+            
+            // 拖拽离开
+            node.addEventListener('dragleave', function(e) {
+                this.classList.remove('drag-over');
+            });
+            
+            // 拖拽悬停
+            node.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                return false;
+            });
+            
+            // 放置
+            node.addEventListener('drop', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                if (this !== draggedElement && this.classList.contains('folder')) {
+                    this.classList.remove('drag-over');
+                    
+                    // 模拟移动操作
+                    const nodeName = draggedElement.textContent.trim();
+                    const targetName = this.textContent.trim();
+                    alert(`已将 "${nodeName}" 移动到 "${targetName}" 目录下`);
+                    
+                    // 在实际应用中，这里会调用后端API来移动文件
+                }
+                
+                return false;
+            });
+        });
+    </script>
+    
+    <!-- 登录模态框 -->
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="loginModalLabel">
+                        <i class="fa fa-sign-in"></i> 平台账号登录
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="platform-login text-center">
+                                <div class="platform-icon bilibili-icon">
+                                    <i class="fa fa-tv"></i>
+                                </div>
+                                <h6>Bilibili</h6>
+                                <div class="login-status logged-out" id="bilibili-status">
+                                    <i class="fa fa-times-circle"></i> 未登录
+                                </div>
+                                <button class="btn btn-primary btn-sm mt-2" onclick="loginPlatform('bilibili')">
+                                    <i class="fa fa-sign-in"></i> 登录
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="platform-login text-center">
+                                <div class="platform-icon douyin-icon">
+                                    <i class="fa fa-music"></i>
+                                </div>
+                                <h6>抖音</h6>
+                                <div class="login-status logged-out" id="douyin-status">
+                                    <i class="fa fa-times-circle"></i> 未登录
+                                </div>
+                                <button class="btn btn-primary btn-sm mt-2" onclick="loginPlatform('douyin')">
+                                    <i class="fa fa-sign-in"></i> 登录
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="platform-login text-center">
+                                <div class="platform-icon toutiao-icon">
+                                    <i class="fa fa-newspaper-o"></i>
+                                </div>
+                                <h6>今日头条</h6>
+                                <div class="login-status logged-out" id="toutiao-status">
+                                    <i class="fa fa-times-circle"></i> 未登录
+                                </div>
+                                <button class="btn btn-primary btn-sm mt-2" onclick="loginPlatform('toutiao')">
+                                    <i class="fa fa-sign-in"></i> 登录
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-info mt-3">
+                        <i class="fa fa-info-circle"></i>
+                        <small>
+                            登录后系统将自动保存Cookie，用于后续视频下载，避免因未认证导致下载失败。
+                            Cookie信息将加密存储在本地数据库中。
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fa fa-times"></i> 关闭
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 平台登录功能
+        function loginPlatform(platform) {
+            const platformNames = {
+                'bilibili': 'Bilibili',
+                'douyin': '抖音',
+                'toutiao': '今日头条'
+            };
+            
+            alert(`正在打开${platformNames[platform]}登录页面...\n\n在实际应用中，这里会打开对应平台的登录页面，用户完成登录后自动保存Cookie。`);
+            
+            // 模拟登录成功
+            setTimeout(() => {
+                const statusElement = document.getElementById(`${platform}-status`);
+                statusElement.className = 'login-status logged-in';
+                statusElement.innerHTML = '<i class="fa fa-check-circle"></i> 已登录';
+            }, 1000);
+        }
+        
+        // 更换存储目录功能
+        function changeStorageDirectory() {
+            // 检测操作系统
+            const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+            const isWindows = navigator.platform.toUpperCase().indexOf('WIN') >= 0;
+            
+            if (isMac) {
+                // macOS：调用访达（Finder）进行地址选择
+                alert('正在调用访达进行地址选择...\n\n在实际应用中，这里会调用访达API打开目录选择对话框。');
+                
+                // 模拟访达选择
+                setTimeout(() => {
+                    const newDirectory = '/Users/username/NewVideos';
+                    const oldDirectory = '/Users/username/Downloads/Videos';
+                    
+                    // 显示迁移选项模态框
+                    const migrationModal = document.createElement('div');
+                    migrationModal.className = 'modal fade';
+                    migrationModal.id = 'migrationModal';
+                    migrationModal.innerHTML = `
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">
+                                        <i class="fa fa-exchange"></i> 存储目录迁移
+                                    </h5>
+                                    <button type="button" class="btn-close" onclick="closeMigrationModal()" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="alert alert-info">
+                                        <i class="fa fa-info-circle"></i>
+                                        <small>
+                                            旧目录：${oldDirectory}<br>
+                                            新目录：${newDirectory}
+                                        </small>
+                                    </div>
+                                    <h6>请选择迁移方式：</h6>
+                                    <div class="migration-option" onclick="selectMigrationOption(1, this)">
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-3">
+                                                <i class="fa fa-arrows-alt fa-2x" style="color: #007bff;"></i>
+                                            </div>
+                                            <div>
+                                                <strong>迁移已下载资源</strong>
+                                                <p class="mb-0 text-muted small">
+                                                    将旧目录中的所有文件移动到新目录<br>
+                                                    <span class="text-warning">注意：迁移过程中请不要关闭终端</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="migration-option" onclick="selectMigrationOption(2, this)">
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-3">
+                                                <i class="fa fa-refresh fa-2x" style="color: #28a745;"></i>
+                                            </div>
+                                            <div>
+                                                <strong>仅更新存储地址</strong>
+                                                <p class="mb-0 text-muted small">
+                                                    旧目录中的文件保持不变<br>
+                                                    新下载的视频将保存到新目录
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="migration-progress" id="migrationProgress" style="display: none;">
+                                        <div class="progress">
+                                            <div class="progress-bar progress-bar-striped progress-bar-animated" id="migrationProgressBar" style="width: 0%"></div>
+                                        </div>
+                                        <p class="text-center text-muted small mt-2" id="migrationStatus">
+                                            正在迁移文件... 0%
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" onclick="closeMigrationModal()">
+                                        <i class="fa fa-times"></i> 取消
+                                    </button>
+                                    <button type="button" class="btn btn-primary" onclick="confirmMigration()">
+                                        <i class="fa fa-check"></i> 确认
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.body.appendChild(migrationModal);
+                    migrationModal.style.display = 'block';
+                    migrationModal.classList.add('show');
+                }, 500);
+            } else if (isWindows) {
+                // Windows：调用文件资源管理器进行地址选择
+                alert('正在调用文件资源管理器进行地址选择...\n\n在实际应用中，这里会调用Windows文件资源管理器API打开目录选择对话框。');
+                
+                // 模拟Windows选择
+                setTimeout(() => {
+                    const newDirectory = 'C:\\Users\\username\\NewVideos';
+                    const oldDirectory = 'C:\\Users\\username\\Downloads\\Videos';
+                    
+                    // 显示迁移选项模态框（与macOS相同）
+                    const migrationModal = document.createElement('div');
+                    migrationModal.className = 'modal fade';
+                    migrationModal.id = 'migrationModal';
+                    migrationModal.innerHTML = `
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">
+                                        <i class="fa fa-exchange"></i> 存储目录迁移
+                                    </h5>
+                                    <button type="button" class="btn-close" onclick="closeMigrationModal()" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="alert alert-info">
+                                        <i class="fa fa-info-circle"></i>
+                                        <small>
+                                            旧目录：${oldDirectory}<br>
+                                            新目录：${newDirectory}
+                                        </small>
+                                    </div>
+                                    <h6>请选择迁移方式：</h6>
+                                    <div class="migration-option" onclick="selectMigrationOption(1, this)">
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-3">
+                                                <i class="fa fa-arrows-alt fa-2x" style="color: #007bff;"></i>
+                                            </div>
+                                            <div>
+                                                <strong>迁移已下载资源</strong>
+                                                <p class="mb-0 text-muted small">
+                                                    将旧目录中的所有文件移动到新目录<br>
+                                                    <span class="text-warning">注意：迁移过程中请不要关闭终端</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="migration-option" onclick="selectMigrationOption(2, this)">
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-3">
+                                                <i class="fa fa-refresh fa-2x" style="color: #28a745;"></i>
+                                            </div>
+                                            <div>
+                                                <strong>仅更新存储地址</strong>
+                                                <p class="mb-0 text-muted small">
+                                                    旧目录中的文件保持不变<br>
+                                                    新下载的视频将保存到新目录
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="migration-progress" id="migrationProgress" style="display: none;">
+                                        <div class="progress">
+                                            <div class="progress-bar progress-bar-striped progress-bar-animated" id="migrationProgressBar" style="width: 0%"></div>
+                                        </div>
+                                        <p class="text-center text-muted small mt-2" id="migrationStatus">
+                                            正在迁移文件... 0%
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" onclick="closeMigrationModal()">
+                                        <i class="fa fa-times"></i> 取消
+                                    </button>
+                                    <button type="button" class="btn btn-primary" onclick="confirmMigration()">
+                                        <i class="fa fa-check"></i> 确认
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.body.appendChild(migrationModal);
+                    migrationModal.style.display = 'block';
+                    migrationModal.classList.add('show');
+                }, 500);
+            } else {
+                // 其他平台：使用Webkit目录选择
+                alert('正在调用系统目录选择器...\n\n在实际应用中，这里会调用Webkit目录选择API。');
+                
+                // 模拟其他平台选择
+                setTimeout(() => {
+                    const newDirectory = '/home/username/NewVideos';
+                    const oldDirectory = '/home/username/Downloads/Videos';
+                    
+                    // 显示迁移选项模态框（与macOS相同）
+                    const migrationModal = document.createElement('div');
+                    migrationModal.className = 'modal fade';
+                    migrationModal.id = 'migrationModal';
+                    migrationModal.innerHTML = `
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">
+                                        <i class="fa fa-exchange"></i> 存储目录迁移
+                                    </h5>
+                                    <button type="button" class="btn-close" onclick="closeMigrationModal()" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="alert alert-info">
+                                        <i class="fa fa-info-circle"></i>
+                                        <small>
+                                            旧目录：${oldDirectory}<br>
+                                            新目录：${newDirectory}
+                                        </small>
+                                    </div>
+                                    <h6>请选择迁移方式：</h6>
+                                    <div class="migration-option" onclick="selectMigrationOption(1, this)">
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-3">
+                                                <i class="fa fa-arrows-alt fa-2x" style="color: #007bff;"></i>
+                                            </div>
+                                            <div>
+                                                <strong>迁移已下载资源</strong>
+                                                <p class="mb-0 text-muted small">
+                                                    将旧目录中的所有文件移动到新目录<br>
+                                                    <span class="text-warning">注意：迁移过程中请不要关闭终端</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="migration-option" onclick="selectMigrationOption(2, this)">
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-3">
+                                                <i class="fa fa-refresh fa-2x" style="color: #28a745;"></i>
+                                            </div>
+                                            <div>
+                                                <strong>仅更新存储地址</strong>
+                                                <p class="mb-0 text-muted small">
+                                                    旧目录中的文件保持不变<br>
+                                                    新下载的视频将保存到新目录
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="migration-progress" id="migrationProgress" style="display: none;">
+                                        <div class="progress">
+                                            <div class="progress-bar progress-bar-striped progress-bar-animated" id="migrationProgressBar" style="width: 0%"></div>
+                                        </div>
+                                        <p class="text-center text-muted small mt-2" id="migrationStatus">
+                                            正在迁移文件... 0%
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" onclick="closeMigrationModal()">
+                                        <i class="fa fa-times"></i> 取消
+                                    </button>
+                                    <button type="button" class="btn btn-primary" onclick="confirmMigration()">
+                                        <i class="fa fa-check"></i> 确认
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.body.appendChild(migrationModal);
+                    migrationModal.style.display = 'block';
+                    migrationModal.classList.add('show');
+                }, 500);
+            }
+        }
+        
+        // 选择迁移选项
+        function selectMigrationOption(option, element) {
+            document.querySelectorAll('.migration-option').forEach(opt => opt.classList.remove('selected'));
+            element.classList.add('selected');
+            window.selectedMigrationOption = option;
+        }
+        
+        // 确认迁移
+        function confirmMigration() {
+            if (!window.selectedMigrationOption) {
+                alert('请选择一种迁移方式');
+                return;
+            }
+            
+            // 隐藏选项，显示进度
+            document.querySelectorAll('.migration-option').forEach(opt => opt.style.display = 'none');
+            document.getElementById('migrationProgress').style.display = 'block';
+            
+            // 模拟迁移过程
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 10;
+                document.getElementById('migrationProgressBar').style.width = progress + '%';
+                document.getElementById('migrationStatus').textContent = `正在迁移文件... ${progress}%`;
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    document.getElementById('migrationStatus').textContent = '迁移完成！';
+                    setTimeout(() => {
+                        closeMigrationModal();
+                        document.getElementById('current-storage-path').textContent = '/Users/username/NewVideos';
+                        alert('存储目录已更新，文件迁移完成！');
+                    }, 1000);
+                }
+            }, 500);
+        }
+        
+        // 关闭迁移模态框
+        function closeMigrationModal() {
+            const modal = document.getElementById('migrationModal');
+            if (modal) {
+                modal.classList.remove('show');
+                setTimeout(() => modal.remove(), 300);
+            }
+        }
+        
+        // 页面加载时检查迁移状态
+        window.onload = function() {
+            // 模拟检查是否有未完成的迁移
+            const hasPendingMigration = Math.random() > 0.5;
+            
+            if (hasPendingMigration) {
+                setTimeout(() => {
+                    if (confirm('检测到上次有未完成的文件迁移。\n\n是否继续完成文件传输？')) {
+                        alert('正在继续迁移...');
+                        // 在实际应用中，这里会继续之前的迁移任务
+                    } else {
+                        alert('已取消未完成的迁移。');
+                    }
+                }, 1000);
+            }
+        };
+    </script>
+</body>
+</html>
