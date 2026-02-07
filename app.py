@@ -9,7 +9,6 @@ import uuid
 import os
 import threading
 import time
-from apscheduler.schedulers.background import BackgroundScheduler
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = Config.SECRET_KEY
@@ -20,8 +19,6 @@ video_downloader = VideoDownloader(redis_manager)
 platform_auth = PlatformAuth(redis_manager)
 video_transcoder = VideoTranscoder(redis_manager)
 storage_manager = StorageManager(redis_manager)
-
-scheduler = BackgroundScheduler()
 
 @app.route('/')
 def index():
@@ -416,26 +413,40 @@ def get_auth_status():
 def login_platform(platform):
     try:
         data = request.get_json()
-        username = data.get('username')
-        password = data.get('password')
+        login_type = data.get('login_type', 'auto')
         
-        if not username or not password:
-            return jsonify({
-                'success': False,
-                'message': '请提供用户名和密码'
-            }), 400
-        
-        if platform == 'bilibili':
-            success, message = platform_auth.login_bilibili(username, password)
-        elif platform == 'douyin':
-            success, message = platform_auth.login_douyin(username, password)
-        elif platform == 'toutiao':
-            success, message = platform_auth.login_toutiao(username, password)
+        if login_type == 'manual':
+            cookie_string = data.get('cookie_string')
+            
+            if not cookie_string:
+                return jsonify({
+                    'success': False,
+                    'message': '请提供Cookie字符串'
+                }), 400
+            
+            if platform == 'bilibili':
+                success, message = platform_auth.login_bilibili_manual(cookie_string)
+            elif platform == 'douyin':
+                success, message = platform_auth.login_douyin_manual(cookie_string)
+            elif platform == 'toutiao':
+                success, message = platform_auth.login_toutiao_manual(cookie_string)
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': '不支持的平台'
+                }), 400
         else:
-            return jsonify({
-                'success': False,
-                'message': '不支持的平台'
-            }), 400
+            if platform == 'bilibili':
+                success, message = platform_auth.login_bilibili('', '')
+            elif platform == 'douyin':
+                success, message = platform_auth.login_douyin('', '')
+            elif platform == 'toutiao':
+                success, message = platform_auth.login_toutiao('', '')
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': '不支持的平台'
+                }), 400
         
         return jsonify({
             'success': success,
@@ -495,7 +506,7 @@ def process_download_queue():
             time.sleep(1)
 
 if __name__ == '__main__':
-    scheduler.add_job(func=process_download_queue, id='download_processor', trigger='interval', seconds=5)
-    scheduler.start()
+    download_thread = threading.Thread(target=process_download_queue, daemon=True)
+    download_thread.start()
     
-    app.run(host='0.0.0.0', port=5000, debug=Config.DEBUG)
+    app.run(host='192.168.31.226', port=5001, debug=Config.DEBUG)

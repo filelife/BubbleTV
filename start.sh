@@ -29,7 +29,7 @@ fi
 
 # 安装Python依赖
 echo "正在安装Python依赖..."
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 
 # 创建必要的目录
 mkdir -p logs
@@ -37,5 +37,5 @@ mkdir -p static/js
 mkdir -p templates
 
 # 启动Flask应用
-echo "启动Flask应用..."
-python app.py
+echo "启动Flask应用...with port 5001"
+python3 app.py

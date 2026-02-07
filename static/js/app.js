@@ -4,7 +4,100 @@ document.addEventListener('DOMContentLoaded', function() {
     loadStorageInfo();
     checkMigrationStatus();
     setupEventListeners();
+    createMessageModal();
 });
+
+function createMessageModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.id = 'messageModal';
+    modal.setAttribute('tabindex', '-1');
+    modal.setAttribute('aria-hidden', 'true');
+    modal.innerHTML = `
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="messageModalTitle">提示</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <div id="messageModalContent" style="white-space: pre-wrap; word-break: break-word;"></div>
+                    </div>
+                    <div class="text-center mt-3">
+                        <button class="btn btn-outline-primary btn-sm" onclick="copyMessageContent()">
+                            <i class="fa fa-copy"></i> 复制内容
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+                        <i class="fa fa-check"></i> 确定
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    modal.addEventListener('hidden.bs.modal', function() {
+        document.getElementById('messageModalContent').textContent = '';
+    });
+}
+
+function showMessage(title, message) {
+    const modal = document.getElementById('messageModal');
+    const titleElement = document.getElementById('messageModalTitle');
+    const contentElement = document.getElementById('messageModalContent');
+    
+    titleElement.textContent = title;
+    contentElement.textContent = message;
+    
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+}
+
+function copyMessageContent() {
+    const content = document.getElementById('messageModalContent').textContent;
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(content).then(() => {
+            showMessage('复制成功', '内容已复制到剪贴板');
+        }).catch(err => {
+            console.error('Clipboard API failed:', err);
+            fallbackCopy(content);
+        });
+    } else {
+        fallbackCopy(content);
+    }
+}
+
+function fallbackCopy(text) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    textarea.setSelectionRange(0, 99999);
+    
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            showMessage('复制成功', '内容已复制到剪贴板');
+        } else {
+            showMessage('复制失败', '无法复制内容，请手动选择文本复制');
+        }
+    } catch (err) {
+        console.error('Copy failed:', err);
+        showMessage('复制失败', '无法复制内容，请手动选择文本复制');
+    }
+    
+    document.body.removeChild(textarea);
+}
 
 function setupEventListeners() {
     document.getElementById('download-form').addEventListener('submit', handleDownloadSubmit);
@@ -12,9 +105,13 @@ function setupEventListeners() {
     document.getElementById('search-btn').addEventListener('click', handleSearch);
     document.getElementById('search-input').addEventListener('input', handleRealTimeSearch);
     
-    document.getElementById('login-bilibili-btn').addEventListener('click', () => handleLogin('bilibili'));
-    document.getElementById('login-douyin-btn').addEventListener('click', () => handleLogin('douyin'));
-    document.getElementById('login-toutiao-btn').addEventListener('click', () => handleLogin('toutiao'));
+    document.getElementById('login-bilibili-btn').addEventListener('click', () => handleLogin('bilibili', 'auto'));
+    document.getElementById('login-douyin-btn').addEventListener('click', () => handleLogin('douyin', 'auto'));
+    document.getElementById('login-toutiao-btn').addEventListener('click', () => handleLogin('toutiao', 'auto'));
+    
+    document.getElementById('save-bilibili-cookie-btn').addEventListener('click', () => handleManualLogin('bilibili'));
+    document.getElementById('save-douyin-cookie-btn').addEventListener('click', () => handleManualLogin('douyin'));
+    document.getElementById('save-toutiao-cookie-btn').addEventListener('click', () => handleManualLogin('toutiao'));
     
     setupDragAndDrop();
 }
@@ -25,7 +122,7 @@ function handleDownloadSubmit(e) {
     const url = document.getElementById('video-url').value.trim();
     
     if (!url) {
-        alert('请输入视频链接');
+        showMessage('提示', '请输入视频链接');
         return;
     }
     
@@ -50,16 +147,16 @@ function addTask(url) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('下载任务已添加到队列');
+            showMessage('成功', '下载任务已添加到队列');
             document.getElementById('video-url').value = '';
             loadTasks();
         } else {
-            alert('添加任务失败：' + data.message);
+            showMessage('错误', '添加任务失败：' + data.message);
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('网络错误，请稍后重试');
+        showMessage('网络错误', '网络错误，请稍后重试');
     });
 }
 
@@ -163,7 +260,7 @@ function pauseTask(taskId) {
         if (data.success) {
             loadTasks();
         } else {
-            alert('操作失败：' + data.message);
+            showMessage('操作失败', '操作失败：' + data.message);
         }
     });
 }
@@ -177,7 +274,7 @@ function cancelTask(taskId) {
         if (data.success) {
             loadTasks();
         } else {
-            alert('操作失败：' + data.message);
+            showMessage('操作失败', '操作失败：' + data.message);
         }
     });
 }
@@ -191,7 +288,7 @@ function retryTask(taskId) {
         if (data.success) {
             loadTasks();
         } else {
-            alert('操作失败：' + data.message);
+            showMessage('操作失败', '操作失败：' + data.message);
         }
     });
 }
@@ -207,7 +304,7 @@ function openTask(taskId) {
                 openDirectory(data.path);
             }
         } else {
-            alert('操作失败：' + data.message);
+            showMessage('操作失败', '操作失败：' + data.message);
         }
     });
 }
@@ -225,7 +322,7 @@ function deleteTask(taskId) {
         if (data.success) {
             loadTasks();
         } else {
-            alert('操作失败：' + data.message);
+            showMessage('操作失败', '操作失败：' + data.message);
         }
     });
 }
@@ -396,7 +493,7 @@ function moveFile(sourcePath, targetPath) {
         if (data.success) {
             loadVideos();
         } else {
-            alert('移动失败：' + data.message);
+            showMessage('移动失败', '移动失败：' + data.message);
         }
     });
 }
@@ -464,7 +561,7 @@ function handleChangeStorage() {
 }
 
 function selectDirectoryMacos() {
-    alert('正在调用访达进行地址选择...\n\n在实际应用中，这里会调用访达API打开目录选择对话框。');
+    showMessage('提示', '正在调用访达进行地址选择...\n\n在实际应用中，这里会调用访达API打开目录选择对话框。');
     
     fetch('/api/storage/select-directory', {
         method: 'POST',
@@ -478,17 +575,17 @@ function selectDirectoryMacos() {
         if (data.success && data.selected_path) {
             showMigrationDialog(data.current_path, data.selected_path);
         } else {
-            alert('选择目录失败：' + (data.message || '未知错误'));
+            showMessage('选择目录失败', '选择目录失败：' + (data.message || '未知错误'));
         }
     })
     .catch(error => {
         console.error('Error selecting directory:', error);
-        alert('网络错误，请稍后重试');
+        showMessage('网络错误', '网络错误，请稍后重试');
     });
 }
 
 function selectDirectoryWindows() {
-    alert('正在调用文件资源管理器进行地址选择...\n\n在实际应用中，这里会调用Windows文件资源管理器API打开目录选择对话框。');
+    showMessage('提示', '正在调用文件资源管理器进行地址选择...\n\n在实际应用中，这里会调用Windows文件资源管理器API打开目录选择对话框。');
     
     fetch('/api/storage/select-directory', {
         method: 'POST',
@@ -502,17 +599,17 @@ function selectDirectoryWindows() {
         if (data.success && data.selected_path) {
             showMigrationDialog(data.current_path, data.selected_path);
         } else {
-            alert('选择目录失败：' + (data.message || '未知错误'));
+            showMessage('选择目录失败', '选择目录失败：' + (data.message || '未知错误'));
         }
     })
     .catch(error => {
         console.error('Error selecting directory:', error);
-        alert('网络错误，请稍后重试');
+        showMessage('网络错误', '网络错误，请稍后重试');
     });
 }
 
 function selectDirectoryLinux() {
-    alert('正在调用系统目录选择器...\n\n在实际应用中，这里会调用Webkit目录选择API。');
+    showMessage('提示', '正在调用系统目录选择器...\n\n在实际应用中，这里会调用Webkit目录选择API。');
     
     fetch('/api/storage/select-directory', {
         method: 'POST',
@@ -526,12 +623,12 @@ function selectDirectoryLinux() {
         if (data.success && data.selected_path) {
             showMigrationDialog(data.current_path, data.selected_path);
         } else {
-            alert('选择目录失败：' + (data.message || '未知错误'));
+            showMessage('选择目录失败', '选择目录失败：' + (data.message || '未知错误'));
         }
     })
     .catch(error => {
         console.error('Error selecting directory:', error);
-        alert('网络错误，请稍后重试');
+        showMessage('网络错误', '网络错误，请稍后重试');
     });
 }
 
@@ -619,7 +716,7 @@ function selectMigrationOption(option, element) {
 
 function confirmMigration(newPath) {
     if (!window.selectedMigrationOption) {
-        alert('请选择一种迁移方式');
+        showMessage('提示', '请选择一种迁移方式');
         return;
     }
     
@@ -643,13 +740,13 @@ function confirmMigration(newPath) {
         if (data.success) {
             simulateMigrationProgress(data.total_files);
         } else {
-            alert('迁移失败：' + data.message);
+            showMessage('迁移失败', '迁移失败：' + data.message);
             closeMigrationModal();
         }
     })
     .catch(error => {
         console.error('Error migrating storage:', error);
-        alert('网络错误，请稍后重试');
+        showMessage('网络错误', '网络错误，请稍后重试');
         closeMigrationModal();
     });
 }
@@ -668,7 +765,7 @@ function simulateMigrationProgress(totalFiles) {
             setTimeout(() => {
                 closeMigrationModal();
                 loadStorageInfo();
-                alert('存储目录已更新，文件迁移完成！');
+                showMessage('成功', '存储目录已更新，文件迁移完成！');
             }, 1000);
         }
     }, 500);
@@ -706,36 +803,123 @@ function cancelMigration() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('已取消未完成的迁移。');
+            showMessage('取消成功', '已取消未完成的迁移。');
         }
     });
 }
 
-function handleLogin(platform) {
+function handleLogin(platform, loginType) {
     const platformNames = {
         'bilibili': 'Bilibili',
         'douyin': '抖音',
         'toutiao': '今日头条'
     };
     
-    alert(`正在打开${platformNames[platform]}登录页面...\n\n在实际应用中，这里会打开对应平台的登录页面，用户完成登录后自动保存Cookie。`);
+    if (loginType === 'auto') {
+        showMessage('提示', `正在打开${platformNames[platform]}登录页面...\n\n在实际应用中，这里会打开对应平台的登录页面，用户完成登录后自动保存Cookie。`);
+    
+        fetch(`/api/auth/login/${platform}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ login_type: 'auto' })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateLoginStatus(platform, true, 'auto');
+                showMessage('登录成功', `${platformNames[platform]}登录成功`);
+            } else {
+                showMessage('登录失败', `${platformNames[platform]}登录失败：${data.message}`);
+            }
+        })
+        .catch(error => {
+            console.error('Error logging in:', error);
+            showMessage('网络错误', '网络错误，请稍后重试');
+        });
+    }
+}
+
+function handleManualLogin(platform) {
+    const platformNames = {
+        'bilibili': 'Bilibili',
+        'douyin': '抖音',
+        'toutiao': '今日头条'
+    };
+    
+    let cookieString = '';
+    
+    if (platform === 'bilibili') {
+        cookieString = document.getElementById('bilibili-cookie').value.trim();
+    } else if (platform === 'douyin') {
+        cookieString = document.getElementById('douyin-cookie').value.trim();
+    } else if (platform === 'toutiao') {
+        cookieString = document.getElementById('toutiao-cookie').value.trim();
+    }
+    
+    if (!cookieString) {
+        showMessage('提示', '请输入Cookie字符串');
+        return;
+    }
+    
+    showMessage('提示', `正在保存${platformNames[platform]} Cookie...`);
     
     fetch(`/api/auth/login/${platform}`, {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+            login_type: 'manual',
+            cookie_string: cookieString 
+        })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            updateLoginStatus(platform, true);
-            alert(`${platformNames[platform]}登录成功`);
+            updateLoginStatus(platform, true, 'manual');
+            showMessage('保存成功', `${platformNames[platform]} Cookie已保存`);
+            
+            if (platform === 'bilibili') {
+                document.getElementById('bilibili-cookie').value = '';
+            } else if (platform === 'douyin') {
+                document.getElementById('douyin-cookie').value = '';
+            } else if (platform === 'toutiao') {
+                document.getElementById('toutiao-cookie').value = '';
+            }
         } else {
-            alert(`${platformNames[platform]}登录失败：${data.message}`);
+            showMessage('保存失败', `${platformNames[platform]} Cookie保存失败：${data.message}`);
         }
     })
     .catch(error => {
-        console.error('Error logging in:', error);
-        alert('网络错误，请稍后重试');
+        console.error('Error saving cookie:', error);
+        showMessage('网络错误', '网络错误，请稍后重试');
     });
+}
+
+function updateLoginStatus(platform, isLoggedIn, loginType) {
+    const autoStatusElement = document.getElementById(`${platform}-status`);
+    const manualStatusElement = document.getElementById(`${platform}-manual-status`);
+    
+    if (isLoggedIn) {
+        if (loginType === 'auto') {
+            autoStatusElement.className = 'login-status logged-in';
+            autoStatusElement.innerHTML = '<i class="fa fa-check-circle"></i> 已登录';
+            manualStatusElement.className = 'login-status logged-out';
+            manualStatusElement.innerHTML = '<i class="fa fa-times-circle"></i> 未登录';
+        } else {
+            manualStatusElement.className = 'login-status logged-in';
+            manualStatusElement.innerHTML = '<i class="fa fa-check-circle"></i> 已登录';
+            autoStatusElement.className = 'login-status logged-out';
+            autoStatusElement.innerHTML = '<i class="fa fa-times-circle"></i> 未登录';
+        }
+    } else {
+        autoStatusElement.className = 'login-status logged-out';
+        autoStatusElement.innerHTML = '<i class="fa fa-times-circle"></i> 未登录';
+        manualStatusElement.className = 'login-status logged-out';
+        manualStatusElement.innerHTML = '<i class="fa fa-times-circle"></i> 未登录';
+    }
 }
 
 function updateLoginStatus(platform, isLoggedIn) {
@@ -767,7 +951,7 @@ function openDirectory(path) {
         .then(response => response.json())
         .then(data => {
             if (!data.success) {
-                alert('打开目录失败：' + data.message);
+                showMessage('打开目录失败', '打开目录失败：' + data.message);
             }
         });
     } else if (isWindows) {

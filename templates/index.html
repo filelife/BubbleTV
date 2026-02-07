@@ -295,50 +295,146 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="platform-login text-center">
-                                <div class="platform-icon bilibili-icon">
-                                    <i class="fa fa-tv"></i>
+                    <div class="alert alert-info">
+                        <i class="fa fa-info-circle"></i>
+                        <small>
+                            <strong>登录方式选择：</strong>
+                            <ul class="nav nav-tabs mb-3" id="loginMethodTabs">
+                                <li class="nav-item">
+                                    <button class="nav-link active" id="autoLogin-tab" data-bs-toggle="tab" data-bs-target="#autoLogin" type="button">
+                                        <i class="fa fa-robot"></i> 自动登录
+                                    </button>
+                                </li>
+                                <li class="nav-item">
+                                    <button class="nav-link" id="manualLogin-tab" data-bs-toggle="tab" data-bs-target="#manualLogin" type="button">
+                                        <i class="fa fa-key"></i> 手动Cookie
+                                    </button>
+                                </li>
+                            </ul>
+                        </small>
+                    </div>
+                    
+                    <div class="tab-content" id="loginMethodContent">
+                        <!-- 自动登录 -->
+                        <div class="tab-pane fade show active" id="autoLogin">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="platform-login text-center">
+                                        <div class="platform-icon bilibili-icon">
+                                            <i class="fa fa-tv"></i>
+                                        </div>
+                                        <h6>Bilibili</h6>
+                                        <div class="login-status logged-out" id="bilibili-status">
+                                            <i class="fa fa-times-circle"></i> 未登录
+                                        </div>
+                                        <button class="btn btn-primary btn-sm mt-2" id="login-bilibili-btn">
+                                            <i class="fa fa-sign-in"></i> 登录
+                                        </button>
+                                    </div>
                                 </div>
-                                <h6>Bilibili</h6>
-                                <div class="login-status logged-out" id="bilibili-status">
-                                    <i class="fa fa-times-circle"></i> 未登录
+                                <div class="col-md-4">
+                                    <div class="platform-login text-center">
+                                        <div class="platform-icon douyin-icon">
+                                            <i class="fa fa-music"></i>
+                                        </div>
+                                        <h6>抖音</h6>
+                                        <div class="login-status logged-out" id="douyin-status">
+                                            <i class="fa fa-times-circle"></i> 未登录
+                                        </div>
+                                        <button class="btn btn-primary btn-sm mt-2" id="login-douyin-btn">
+                                            <i class="fa fa-sign-in"></i> 登录
+                                        </button>
+                                    </div>
                                 </div>
-                                <button class="btn btn-primary btn-sm mt-2" id="login-bilibili-btn">
-                                    <i class="fa fa-sign-in"></i> 登录
-                                </button>
+                                <div class="col-md-4">
+                                    <div class="platform-login text-center">
+                                        <div class="platform-icon toutiao-icon">
+                                            <i class="fa fa-newspaper-o"></i>
+                                        </div>
+                                        <h6>今日头条</h6>
+                                        <div class="login-status logged-out" id="toutiao-status">
+                                            <i class="fa fa-times-circle"></i> 未登录
+                                        </div>
+                                        <button class="btn btn-primary btn-sm mt-2" id="login-toutiao-btn">
+                                            <i class="fa fa-sign-in"></i> 登录
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="platform-login text-center">
-                                <div class="platform-icon douyin-icon">
-                                    <i class="fa fa-music"></i>
-                                </div>
-                                <h6>抖音</h6>
-                                <div class="login-status logged-out" id="douyin-status">
-                                    <i class="fa fa-times-circle"></i> 未登录
-                                </div>
-                                <button class="btn btn-primary btn-sm mt-2" id="login-douyin-btn">
-                                    <i class="fa fa-sign-in"></i> 登录
-                                </button>
+                        
+                        <!-- 手动Cookie -->
+                        <div class="tab-pane fade" id="manualLogin">
+                            <div class="alert alert-warning">
+                                <i class="fa fa-exclamation-triangle"></i>
+                                <small>
+                                    手动Cookie方式：请从浏览器中复制Cookie字符串并粘贴到下方输入框中。
+                                    <br>
+                                    <strong>Bilibili</strong>：复制SESSDATA值
+                                    <br>
+                                    <strong>抖音/今日头条</strong>：复制完整的Cookie字符串
+                                </small>
                             </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="platform-login text-center">
-                                <div class="platform-icon toutiao-icon">
-                                    <i class="fa fa-newspaper-o"></i>
+                            
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="platform-login text-center">
+                                        <div class="platform-icon bilibili-icon">
+                                            <i class="fa fa-tv"></i>
+                                        </div>
+                                        <h6>Bilibili</h6>
+                                        <div class="login-status logged-out" id="bilibili-manual-status">
+                                            <i class="fa fa-times-circle"></i> 未登录
+                                        </div>
+                                        <div class="form-group mt-2">
+                                            <label class="form-label">SESSDATA</label>
+                                            <input type="text" class="form-control" id="bilibili-cookie" placeholder="请粘贴SESSDATA">
+                                        </div>
+                                        <button class="btn btn-success btn-sm" id="save-bilibili-cookie-btn">
+                                            <i class="fa fa-save"></i> 保存Cookie
+                                        </button>
+                                    </div>
                                 </div>
-                                <h6>今日头条</h6>
-                                <div class="login-status logged-out" id="toutiao-status">
-                                    <i class="fa fa-times-circle"></i> 未登录
+                                <div class="col-md-4">
+                                    <div class="platform-login text-center">
+                                        <div class="platform-icon douyin-icon">
+                                            <i class="fa fa-music"></i>
+                                        </div>
+                                        <h6>抖音</h6>
+                                        <div class="login-status logged-out" id="douyin-manual-status">
+                                            <i class="fa fa-times-circle"></i> 未登录
+                                        </div>
+                                        <div class="form-group mt-2">
+                                            <label class="form-label">Cookie字符串</label>
+                                            <input type="text" class="form-control" id="douyin-cookie" placeholder="请粘贴Cookie字符串">
+                                        </div>
+                                        <button class="btn btn-success btn-sm" id="save-douyin-cookie-btn">
+                                            <i class="fa fa-save"></i> 保存Cookie
+                                        </button>
+                                    </div>
                                 </div>
-                                <button class="btn btn-primary btn-sm mt-2" id="login-toutiao-btn">
-                                    <i class="fa fa-sign-in"></i> 登录
-                                </button>
+                                <div class="col-md-4">
+                                    <div class="platform-login text-center">
+                                        <div class="platform-icon toutiao-icon">
+                                            <i class="fa fa-newspaper-o"></i>
+                                        </div>
+                                        <h6>今日头条</h6>
+                                        <div class="login-status logged-out" id="toutiao-manual-status">
+                                            <i class="fa fa-times-circle"></i> 未登录
+                                        </div>
+                                        <div class="form-group mt-2">
+                                            <label class="form-label">Cookie字符串</label>
+                                            <input type="text" class="form-control" id="toutiao-cookie" placeholder="请粘贴Cookie字符串">
+                                        </div>
+                                        <button class="btn btn-success btn-sm" id="save-toutiao-cookie-btn">
+                                            <i class="fa fa-save"></i> 保存Cookie
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
+                    
                     <div class="alert alert-info mt-3">
                         <i class="fa fa-info-circle"></i>
                         <small>
