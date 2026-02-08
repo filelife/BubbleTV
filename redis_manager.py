@@ -4,11 +4,12 @@ from datetime import datetime
 from config import Config
 
 class RedisManager:
-    def __init__(self):
+    def __init__(self, use_test_db=False):
+        db = Config.TEST_REDIS_DB if use_test_db else Config.REDIS_DB
         self.redis_client = redis.Redis(
             host=Config.REDIS_HOST,
             port=Config.REDIS_PORT,
-            db=Config.REDIS_DB,
+            db=db,
             password=Config.REDIS_PASSWORD,
             decode_responses=True
         )
@@ -29,9 +30,11 @@ class RedisManager:
     
     def get_task(self, task_id):
         key = f'task:{task_id}'
-        return self.redis_client.hgetall(key)
+        task_data = self.redis_client.hgetall(key)
+        # 如果任务不存在（空字典），返回None
+        return task_data if task_data else None
     
-    def update_task_status(self, task_id, status, progress=None, save_path=None):
+    def update_task_status(self, task_id, status, progress=None, save_path=None, error_message=None, clear_error=False):
         key = f'task:{task_id}'
         self.redis_client.hset(key, 'status', status)
         self.redis_client.hset(key, 'updated_at', datetime.now().isoformat())
@@ -39,6 +42,10 @@ class RedisManager:
             self.redis_client.hset(key, 'progress', str(progress))
         if save_path is not None:
             self.redis_client.hset(key, 'save_path', save_path)
+        if error_message is not None:
+            self.redis_client.hset(key, 'error_message', error_message)
+        if clear_error:
+            self.redis_client.hdel(key, 'error_message')
     
     def update_task_download_speed(self, task_id, speed):
         key = f'task:{task_id}'
@@ -127,11 +134,38 @@ class RedisManager:
         tasks = []
         for key in keys:
             task_data = self.redis_client.hgetall(key)
-            tasks.append(task_data)
+            # 检查任务是否还存在（key存在）
+            if self.redis_client.exists(key):
+                tasks.append(task_data)
         return tasks
+    
+    def task_exists(self, task_id):
+        key = f'task:{task_id}'
+        return self.redis_client.exists(key)
     
     def delete_task(self, task_id):
         key = f'task:{task_id}'
+        return self.redis_client.delete(key)
+    
+    def add_task_log(self, task_id, message):
+        """添加任务日志"""
+        key = f'task_log:{task_id}'
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        log_entry = f'[{timestamp}] {message}'
+        self.redis_client.lpush(key, log_entry)
+        # 限制日志条数，最多保留100条
+        self.redis_client.ltrim(key, 0, 99)
+        return True
+    
+    def get_task_logs(self, task_id):
+        """获取任务的所有日志"""
+        key = f'task_log:{task_id}'
+        logs = self.redis_client.lrange(key, 0, -1)
+        return logs if logs else []
+    
+    def clear_task_logs(self, task_id):
+        """清除任务日志"""
+        key = f'task_log:{task_id}'
         return self.redis_client.delete(key)
     
     def close(self):

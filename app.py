@@ -28,9 +28,19 @@ def index():
 def get_tasks():
     try:
         tasks = redis_manager.get_all_tasks()
+        
+        # 检查任务是否还存在，过滤掉已删除的任务
+        valid_tasks = []
+        for task in tasks:
+            task_id = task.get('id')
+            if task_id and redis_manager.task_exists(task_id):
+                valid_tasks.append(task)
+            else:
+                print(f"⚠️  任务 {task_id} 已不存在，已过滤")
+        
         return jsonify({
             'success': True,
-            'tasks': tasks
+            'tasks': valid_tasks
         })
     except Exception as e:
         return jsonify({
@@ -41,19 +51,95 @@ def get_tasks():
 @app.route('/api/tasks', methods=['POST'])
 def create_task():
     try:
+        print("=" * 60)
+        print("📝 开始创建下载任务")
+        print("=" * 60)
+        
         data = request.get_json()
         url = data.get('url')
         
+        print(f"📥 收到URL: {url}")
+        
         if not url:
+            print("❌ 错误：未提供视频链接")
             return jsonify({
                 'success': False,
                 'message': '请提供视频链接'
             }), 400
         
         task_id = str(uuid.uuid4())
+        print(f"🆔 生成任务ID: {task_id}")
         
-        video_info = video_parser.parse_video_info(url)
+        # 检测平台
+        print(f"🔍 检测视频平台...")
+        if 'douyin.com' in url or 'v.douyin.com' in url:
+            platform = 'douyin'
+        elif 'bilibili.com' in url:
+            platform = 'bilibili'
+        elif 'toutiao.com' in url:
+            platform = 'toutiao'
+        else:
+            platform = 'unknown'
+        print(f"✅ 平台检测完成: {platform}")
         
+        # 抖音平台特殊处理：跳过parser，直接创建任务
+        if platform == 'douyin':
+            print(f"📱 检测到抖音平台，跳过parser，直接创建任务")
+            task_data = {
+                'id': task_id,
+                'url': url,
+                'title': '抖音视频',
+                'platform': 'douyin',
+                'video_type': '短视频',
+                'status': 'pending',
+                'progress': 0,
+                'created_at': time.strftime('%Y-%m-%d %H:%M:%S')
+            }
+            
+            print(f"💾 保存任务到Redis...")
+            redis_manager.set_task(task_id, task_data)
+            print(f"✅ 任务已保存到Redis")
+            
+            print(f"📤 添加任务到下载队列...")
+            redis_manager.add_task_to_queue(task_data)
+            print(f"✅ 任务已添加到队列")
+            
+            print("=" * 60)
+            print(f"✅ 任务创建成功")
+            print("=" * 60)
+            
+            return jsonify({
+                'success': True,
+                'task_id': task_id,
+                'message': '任务已添加到队列'
+            })
+        
+        # 其他平台使用parser解析视频信息
+        print(f"🔍 开始解析视频信息...")
+        try:
+            video_info = video_parser.parse_video_info(url)
+            print(f"✅ 视频信息解析成功")
+            print(f"   标题: {video_info.get('title', 'N/A')}")
+            print(f"   平台: {video_info.get('platform', 'N/A')}")
+            print(f"   类型: {video_info.get('video_type', 'N/A')}")
+        except Exception as parse_error:
+            print(f"❌ 错误：视频信息解析失败")
+            print(f"   错误详情: {str(parse_error)}")
+            print(f"   错误类型: {type(parse_error).__name__}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({
+                'success': False,
+                'message': f'视频信息解析失败: {str(parse_error)}',
+                'error_details': {
+                    'error_type': type(parse_error).__name__,
+                    'error_message': str(parse_error),
+                    'platform': platform,
+                    'url': url
+                }
+            }), 500
+        
+        print(f"💾 准备保存任务数据...")
         task_data = {
             'id': task_id,
             'url': url,
@@ -65,8 +151,17 @@ def create_task():
             'created_at': time.strftime('%Y-%m-%d %H:%M:%S')
         }
         
+        print(f"💾 保存任务到Redis...")
         redis_manager.set_task(task_id, task_data)
+        print(f"✅ 任务已保存到Redis")
+        
+        print(f"📤 添加任务到下载队列...")
         redis_manager.add_task_to_queue(task_data)
+        print(f"✅ 任务已添加到队列")
+        
+        print("=" * 60)
+        print(f"✅ 任务创建成功")
+        print("=" * 60)
         
         return jsonify({
             'success': True,
@@ -74,9 +169,17 @@ def create_task():
             'message': '任务已添加到队列'
         })
     except Exception as e:
+        print("=" * 60)
+        print(f"❌ 错误：创建任务失败")
+        print(f"   错误阶段: 任务创建流程")
+        print(f"   错误详情: {str(e)}")
+        print(f"   错误类型: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
+        print("=" * 60)
         return jsonify({
             'success': False,
-            'message': str(e)
+            'message': f'创建任务失败: {str(e)}'
         }), 500
 
 @app.route('/api/tasks/<task_id>', methods=['GET'])
@@ -130,7 +233,7 @@ def cancel_task(task_id):
 @app.route('/api/tasks/<task_id>/retry', methods=['POST'])
 def retry_task(task_id):
     try:
-        redis_manager.update_task_status(task_id, 'pending')
+        redis_manager.update_task_status(task_id, 'pending', clear_error=True)
         redis_manager.add_task_to_queue(redis_manager.get_task(task_id))
         return jsonify({
             'success': True,
@@ -145,24 +248,45 @@ def retry_task(task_id):
 @app.route('/api/tasks/<task_id>/open', methods=['POST'])
 def open_task(task_id):
     try:
+        print(f'Opening task: {task_id}')
         task = redis_manager.get_task(task_id)
+        print(f'Task data: {task}')
         if task:
             save_path = task.get('save_path')
+            print(f'Save path: {save_path}')
             if save_path and os.path.exists(save_path):
+                print(f'File exists, opening: {save_path}')
                 return jsonify({
                     'success': True,
                     'path': save_path
                 })
             else:
+                print(f'File does not exist or save_path is empty')
                 return jsonify({
                     'success': False,
                     'message': '文件不存在'
                 })
         else:
+            print(f'Task not found')
             return jsonify({
                 'success': False,
                 'message': '任务不存在'
             }), 404
+    except Exception as e:
+        print(f'Error opening task: {str(e)}')
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+@app.route('/api/tasks/<task_id>/logs', methods=['GET'])
+def get_task_logs(task_id):
+    try:
+        logs = redis_manager.get_task_logs(task_id)
+        return jsonify({
+            'success': True,
+            'logs': logs
+        })
     except Exception as e:
         return jsonify({
             'success': False,
@@ -296,6 +420,75 @@ def search_videos():
             'message': str(e)
         }), 500
 
+@app.route('/api/videos/delete', methods=['POST'])
+def delete_video():
+    try:
+        data = request.get_json()
+        path = data.get('path')
+        is_folder = data.get('is_folder', False)
+        
+        if not path:
+            return jsonify({
+                'success': False,
+                'message': '请提供路径'
+            }), 400
+        
+        if not os.path.exists(path):
+            return jsonify({
+                'success': False,
+                'message': '文件或目录不存在'
+            }), 404
+        
+        if is_folder:
+            if os.path.isdir(path):
+                import shutil
+                shutil.rmtree(path)
+                
+                deleted_videos = []
+                videos = redis_manager.get_all_videos()
+                for video in videos:
+                    video_path = video.get('save_path', '')
+                    if video_path and video_path.startswith(path):
+                        redis_manager.redis_client.delete(f"video:{video.get('id')}")
+                        deleted_videos.append(video.get('title'))
+                
+                return jsonify({
+                    'success': True,
+                    'message': f'已删除文件夹及其内容，共删除 {len(deleted_videos)} 个视频记录'
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': '路径不是目录'
+                }), 400
+        else:
+            if os.path.isfile(path):
+                os.remove(path)
+                
+                videos = redis_manager.get_all_videos()
+                for video in videos:
+                    if video.get('save_path') == path:
+                        redis_manager.redis_client.delete(f"video:{video.get('id')}")
+                        return jsonify({
+                            'success': True,
+                            'message': f'已删除视频：{video.get("title")}'
+                        })
+                
+                return jsonify({
+                    'success': True,
+                    'message': '已删除文件'
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': '路径不是文件'
+                }), 400
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
 @app.route('/api/storage/info', methods=['GET'])
 def get_storage_info():
     try:
@@ -303,6 +496,20 @@ def get_storage_info():
         return jsonify({
             'success': True,
             'info': info
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+@app.route('/api/storage/path', methods=['GET'])
+def get_storage_path():
+    try:
+        path = storage_manager.get_storage_path()
+        return jsonify({
+            'success': True,
+            'storage_path': path
         })
     except Exception as e:
         return jsonify({
@@ -406,8 +613,17 @@ def open_directory():
         
         if platform == 'macos':
             import subprocess
-            script = f'tell application "Finder" to open POSIX file "{path}"'
-            subprocess.run(['osascript', '-e', script])
+            if path.endswith('.mp4') or path.endswith('.m4v') or path.endswith('.mov'):
+                result = subprocess.run([
+                    'open', 
+                    '-a', 
+                    'QuickTime Player',
+                    path
+                ], capture_output=True, text=True)
+            else:
+                result = subprocess.run(['open', path], capture_output=True, text=True)
+            if result.returncode != 0:
+                raise Exception(f'Failed to open file: {result.stderr}')
         elif platform == 'windows':
             import os
             os.startfile(path)
@@ -587,8 +803,18 @@ def process_download_queue():
 
 if __name__ == '__main__':
     import logging
+    import os
+    
     log = logging.getLogger('werkzeug')
     log.setLevel(logging.ERROR)
+    
+    if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
+        print('\n🚀 启动自动下载视频应用...')
+        print('=' * 60)
+        print(f'📡 服务器地址: http://192.168.31.226:5001')
+        print('💡 按 Ctrl+C 停止服务器')
+        print('=' * 60)
+        print()
     
     download_thread = threading.Thread(target=process_download_queue, daemon=True)
     download_thread.start()

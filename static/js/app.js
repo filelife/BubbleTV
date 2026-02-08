@@ -106,6 +106,66 @@ function fallbackCopy(text) {
     document.body.removeChild(textarea);
 }
 
+function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+            showMessage('复制成功', '错误信息已复制到剪贴板');
+        }).catch(err => {
+            console.error('Clipboard API failed:', err);
+            fallbackCopy(text);
+        });
+    } else {
+        fallbackCopy(text);
+    }
+}
+
+function showTaskContextMenu(event, taskId, title, url, status) {
+    event.preventDefault();
+    
+    const statusText = {
+        'pending': '等待中',
+        'downloading': '下载中',
+        'transcoding': '转码中',
+        'completed': '已完成',
+        'failed': '下载失败'
+    };
+    
+    const taskInfo = `标题：${title}\nURL：${url}\n状态：${statusText[status] || status}`;
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(taskInfo).then(() => {
+            showMessage('复制成功', '任务信息已复制到剪贴板');
+        }).catch(err => {
+            console.error('Clipboard API failed:', err);
+            fallbackCopy(taskInfo);
+        });
+    } else {
+        fallbackCopy(taskInfo);
+    }
+}
+
+function showTaskLogs(taskId) {
+    fetch(`/api/tasks/${taskId}/logs`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const logs = data.logs;
+            if (logs.length === 0) {
+                showMessage('任务日志', '暂无日志记录');
+            } else {
+                const logContent = logs.join('\n');
+                showMessage('任务日志', logContent);
+            }
+        } else {
+            showMessage('获取日志失败', data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error fetching logs:', error);
+        showMessage('网络错误', '获取日志失败：' + error.message);
+    });
+}
+
 function setupEventListeners() {
     document.getElementById('download-form').addEventListener('submit', handleDownloadSubmit);
     document.getElementById('change-storage-btn').addEventListener('click', handleChangeStorage);
@@ -178,7 +238,24 @@ function addTask(url) {
             document.getElementById('video-url').value = '';
             loadTasks();
         } else {
-            showMessage('错误', '添加任务失败：' + data.message);
+            // 显示详细的错误信息
+            let errorMessage = '添加任务失败：' + data.message;
+            
+            // 如果有详细的错误信息，添加到错误消息中
+            if (data.error_details) {
+                const details = data.error_details;
+                errorMessage += '\n\n详细错误信息：\n';
+                errorMessage += '错误类型：' + details.error_type + '\n';
+                errorMessage += '错误详情：' + details.error_message + '\n';
+                if (details.platform) {
+                    errorMessage += '平台：' + details.platform + '\n';
+                }
+                if (details.url) {
+                    errorMessage += 'URL：' + details.url + '\n';
+                }
+            }
+            
+            showMessage('错误', errorMessage);
         }
     })
     .catch(error => {
@@ -238,22 +315,30 @@ function displayTasks(tasks) {
     tasks.forEach(task => {
         const statusClass = task.status === 'completed' ? 'completed' : (task.status === 'failed' ? 'failed' : '');
         const statusBadge = getStatusBadge(task.status);
-        const progressHtml = task.status === 'downloading' ? 
+        const progressHtml = (task.status === 'downloading' || task.status === 'transcoding') ? 
             `<div class="progress">
-                <div class="progress-bar bg-info" style="width: ${task.progress}%"></div>
+                <div class="progress-bar ${task.status === 'downloading' ? 'bg-info' : 'bg-warning'}" style="width: ${task.progress}%"></div>
             </div>
-            <small class="text-muted">下载速度: ${task.download_speed || '计算中...'}</small>` : '';
+            ${task.status === 'downloading' ? `<small class="text-muted">下载速度: ${task.download_speed || '计算中...'}</small>` : `<small class="text-muted">转码进度: ${task.progress}%</small>`}` : '';
         const actionButtons = getActionButtons(task);
         
         html += `
-            <div class="task-item ${statusClass}">
+            <div class="task-item ${statusClass}" oncontextmenu="showTaskContextMenu(event, '${task.id}', '${task.title.replace(/'/g, "\\'")}', '${task.url.replace(/'/g, "\\'")}', '${task.status}')">
                 <div class="d-flex justify-content-between">
                     <h5>${task.title} <span class="auto-detect-badge">自动识别</span></h5>
                     ${statusBadge}
                 </div>
                 <p class="text-muted">${task.url}</p>
                 ${progressHtml}
-                ${task.error_message ? `<p class="text-danger">错误信息：${task.error_message}</p>` : ''}
+                ${task.error_message ? `
+                    <div class="alert alert-danger mt-2" style="position: relative;">
+                        <p class="mb-1" style="margin-bottom: 5px;"><strong>错误信息：</strong></p>
+                        <p class="mb-2" style="margin-bottom: 10px; word-break: break-all;">${task.error_message}</p>
+                        <button class="btn btn-sm btn-outline-light" onclick="copyText('${task.error_message.replace(/'/g, "\\'")}')" style="position: absolute; top: 10px; right: 10px;">
+                            <i class="fa fa-copy"></i> 复制
+                        </button>
+                    </div>
+                ` : ''}
                 <div class="mt-2">
                     ${actionButtons}
                 </div>
@@ -268,8 +353,10 @@ function getStatusBadge(status) {
     const badges = {
         'pending': '<span class="badge bg-secondary">等待中</span>',
         'downloading': '<span class="badge bg-info">下载中</span>',
+        'transcoding': '<span class="badge bg-warning">转码中</span>',
         'completed': '<span class="badge bg-success">已完成</span>',
-        'failed': '<span class="badge bg-danger">下载失败</span>'
+        'failed': '<span class="badge bg-danger">下载失败</span>',
+        'cancelled': '<span class="badge bg-secondary">已取消</span>'
     };
     return badges[status] || '';
 }
@@ -277,6 +364,9 @@ function getStatusBadge(status) {
 function getActionButtons(task) {
     if (task.status === 'downloading') {
         return `
+            <button class="btn btn-sm btn-info" onclick="showTaskLogs('${task.id}')">
+                <i class="fa fa-list-alt"></i> 日志
+            </button>
             <button class="btn btn-sm btn-secondary" onclick="pauseTask('${task.id}')">
                 <i class="fa fa-pause"></i> 暂停
             </button>
@@ -284,8 +374,20 @@ function getActionButtons(task) {
                 <i class="fa fa-times"></i> 取消
             </button>
         `;
+    } else if (task.status === 'transcoding') {
+        return `
+            <button class="btn btn-sm btn-info" onclick="showTaskLogs('${task.id}')">
+                <i class="fa fa-list-alt"></i> 日志
+            </button>
+            <button class="btn btn-sm btn-danger" onclick="cancelTask('${task.id}')">
+                <i class="fa fa-times"></i> 取消
+            </button>
+        `;
     } else if (task.status === 'completed') {
         return `
+            <button class="btn btn-sm btn-info" onclick="showTaskLogs('${task.id}')">
+                <i class="fa fa-list-alt"></i> 日志
+            </button>
             <button class="btn btn-sm btn-primary" onclick="openTask('${task.id}')">
                 <i class="fa fa-folder-open"></i> 打开
             </button>
@@ -293,8 +395,11 @@ function getActionButtons(task) {
                 <i class="fa fa-trash"></i> 删除
             </button>
         `;
-    } else if (task.status === 'failed') {
+    } else if (task.status === 'failed' || task.status === 'cancelled') {
         return `
+            <button class="btn btn-sm btn-info" onclick="showTaskLogs('${task.id}')">
+                <i class="fa fa-list-alt"></i> 日志
+            </button>
             <button class="btn btn-sm btn-primary" onclick="retryTask('${task.id}')">
                 <i class="fa fa-refresh"></i> 重试
             </button>
@@ -349,18 +454,27 @@ function retryTask(taskId) {
 }
 
 function openTask(taskId) {
+    console.log('openTask called with taskId:', taskId);
     fetch(`/api/tasks/${taskId}/open`, {
         method: 'POST'
     })
     .then(response => response.json())
     .then(data => {
+        console.log('openTask response:', data);
         if (data.success) {
             if (data.path) {
+                console.log('Opening path:', data.path);
                 openDirectory(data.path);
+            } else {
+                showMessage('操作失败', '操作失败：' + data.message);
             }
         } else {
             showMessage('操作失败', '操作失败：' + data.message);
         }
+    })
+    .catch(error => {
+        console.error('Error opening task:', error);
+        showMessage('错误', '打开任务失败：' + error.message);
     });
 }
 
@@ -383,17 +497,19 @@ function deleteTask(taskId) {
 }
 
 function loadVideos() {
-    fetch('/api/videos')
-    .then(response => response.json())
-    .then(data => {
-        displayVideos(data.videos);
+    Promise.all([
+        fetch('/api/videos').then(res => res.json()),
+        fetch('/api/storage/path').then(res => res.json())
+    ])
+    .then(([videosData, pathData]) => {
+        displayVideos(videosData.videos, pathData.storage_path);
     })
     .catch(error => {
         console.error('Error loading videos:', error);
     });
 }
 
-function displayVideos(videos) {
+function displayVideos(videos, storagePath) {
     const container = document.getElementById('tree-container');
     
     if (videos.length === 0) {
@@ -401,31 +517,46 @@ function displayVideos(videos) {
         return;
     }
     
-    const treeData = buildTreeData(videos);
+    const treeData = buildTreeData(videos, storagePath);
     const treeHtml = buildTreeHtml(treeData);
     container.innerHTML = treeHtml;
     
+    restoreExpandedState();
     setupTreeInteractions();
 }
 
-function buildTreeData(videos) {
+function buildTreeData(videos, storagePath) {
     const tree = {};
     
     videos.forEach(video => {
-        const path = video.save_path.split('/');
+        const savePath = video.save_path;
+        if (!savePath) return;
+        
+        const relativePath = savePath.replace(storagePath, '').replace(/^\//, '');
+        const path = relativePath.split('/');
         let current = tree;
         
         path.forEach((part, index) => {
+            const isLast = index === path.length - 1;
+            
             if (!current[part]) {
-                if (index === path.length - 1) {
+                if (isLast) {
                     current[part] = {
                         type: 'file',
-                        data: video
+                        data: video,
+                        fullPath: savePath
                     };
                 } else {
-                    current[part] = {};
+                    current[part] = {
+                        type: 'folder',
+                        children: {}
+                    };
+                    current = current[part].children;
                 }
-                current = current[part];
+            } else {
+                if (current[part].type === 'folder') {
+                    current = current[part].children;
+                }
             }
         });
     });
@@ -433,24 +564,53 @@ function buildTreeData(videos) {
     return tree;
 }
 
-function buildTreeHtml(tree, level = 0) {
+function buildTreeHtml(tree, level = 0, parentPath = '') {
     let html = '';
     const indent = level * 20;
     
     Object.keys(tree).forEach(key => {
         const node = tree[key];
+        const currentPath = parentPath ? `${parentPath}/${key}` : key;
         const iconClass = node.type === 'folder' ? 'fa-folder' : 'fa-file-video-o';
         const nodeClass = node.type === 'folder' ? 'folder' : 'file';
         const draggable = node.type === 'file' ? 'draggable="true"' : '';
         
+        let actionButtons = '';
+        if (node.type === 'file') {
+            const fullPath = node.fullPath || currentPath;
+            actionButtons = `
+                <div class="node-actions">
+                    <button class="btn btn-sm btn-success play-btn" data-path="${fullPath}" title="播放">
+                        <i class="fa fa-play"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger delete-btn" data-path="${currentPath}" data-type="file" title="删除">
+                        <i class="fa fa-trash"></i>
+                    </button>
+                </div>
+            `;
+        } else {
+            actionButtons = `
+                <div class="node-actions">
+                    <button class="btn btn-sm btn-danger delete-btn" data-path="${currentPath}" data-type="folder" title="删除">
+                        <i class="fa fa-trash"></i>
+                    </button>
+                </div>
+            `;
+        }
+        
         html += `
-            <div class="tree-node ${nodeClass} ${draggable}" style="margin-left: ${indent}px" data-path="${node.data ? node.data.save_path : ''}">
-                <i class="fa ${iconClass}"></i> ${key}
+            <div class="tree-node ${nodeClass} ${draggable}" style="margin-left: ${indent}px" data-path="${currentPath}" data-type="${node.type}">
+                <div class="node-content">
+                    <i class="fa ${iconClass}"></i> ${key}
+                    ${actionButtons}
+                </div>
             </div>
         `;
         
-        if (node.type === 'folder' && Object.keys(node).length > 0) {
-            html += buildTreeHtml(node, level + 1);
+        if (node.type === 'folder' && node.children && Object.keys(node.children).length > 0) {
+            html += `<div class="tree-children" data-parent="${currentPath}" style="display: none;">`;
+            html += buildTreeHtml(node.children, level + 1, currentPath);
+            html += `</div>`;
         }
     });
     
@@ -458,22 +618,123 @@ function buildTreeHtml(tree, level = 0) {
 }
 
 function setupTreeInteractions() {
-    document.querySelectorAll('.tree-node.folder').forEach(node => {
-        node.addEventListener('click', function(e) {
-            if (e.target === this || e.target.tagName === 'I') {
-                const children = this.querySelectorAll('.tree-node');
-                children.forEach(child => {
-                    if (child.style.display === 'none') {
-                        child.style.display = 'block';
-                    } else {
-                        child.style.display = 'none';
-                    }
-                });
+    const container = document.getElementById('tree-container');
+    console.log('setupTreeInteractions called, container:', container);
+    
+    container.addEventListener('click', function(e) {
+        console.log('Container clicked, target:', e.target);
+        const playBtn = e.target.closest('.play-btn');
+        const deleteBtn = e.target.closest('.delete-btn');
+        const folderNode = e.target.closest('.tree-node.folder');
+        
+        console.log('playBtn:', playBtn, 'deleteBtn:', deleteBtn, 'folderNode:', folderNode);
+        
+        if (playBtn) {
+            console.log('Play button clicked');
+            e.stopPropagation();
+            const path = playBtn.getAttribute('data-path');
+            console.log('Play button path:', path);
+            playVideo(path);
+            return;
+        }
+        
+        if (deleteBtn) {
+            console.log('Delete button clicked');
+            e.stopPropagation();
+            const path = deleteBtn.getAttribute('data-path');
+            const type = deleteBtn.getAttribute('data-type');
+            deleteItem(path, type);
+            return;
+        }
+        
+        if (folderNode && (e.target === folderNode || e.target.tagName === 'I' || e.target.closest('.node-content'))) {
+            console.log('Folder node clicked');
+            const path = folderNode.getAttribute('data-path');
+            const childrenContainer = document.querySelector(`.tree-children[data-parent="${path}"]`);
+            
+            if (childrenContainer) {
+                const isHidden = childrenContainer.style.display === 'none';
+                childrenContainer.style.display = isHidden ? 'block' : 'none';
+                
+                const icon = folderNode.querySelector('i');
+                if (icon) {
+                    icon.classList.toggle('fa-folder');
+                    icon.classList.toggle('fa-folder-open');
+                }
+                
+                saveExpandedState();
             }
-        });
+        }
     });
     
     setupDragAndDrop();
+}
+
+function saveExpandedState() {
+    const expandedFolders = [];
+    document.querySelectorAll('.tree-children').forEach(container => {
+        if (container.style.display !== 'none') {
+            const parentPath = container.getAttribute('data-parent');
+            if (parentPath) {
+                expandedFolders.push(parentPath);
+            }
+        }
+    });
+    localStorage.setItem('expandedFolders', JSON.stringify(expandedFolders));
+}
+
+function restoreExpandedState() {
+    const expandedFolders = JSON.parse(localStorage.getItem('expandedFolders') || '[]');
+    expandedFolders.forEach(path => {
+        const childrenContainer = document.querySelector(`.tree-children[data-parent="${path}"]`);
+        if (childrenContainer) {
+            childrenContainer.style.display = 'block';
+            
+            const folderNode = document.querySelector(`.tree-node.folder[data-path="${path}"]`);
+            if (folderNode) {
+                const icon = folderNode.querySelector('i');
+                if (icon) {
+                    icon.classList.remove('fa-folder');
+                    icon.classList.add('fa-folder-open');
+                }
+            }
+        }
+    });
+}
+
+function playVideo(path) {
+    console.log('playVideo called with path:', path);
+    openDirectory(path);
+}
+
+function deleteItem(path, type) {
+    const message = type === 'folder' ? '确定要删除这个文件夹及其所有内容吗？' : '确定要删除这个视频吗？';
+    
+    if (confirm(message)) {
+        fetch('/api/videos/delete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                path: path,
+                is_folder: type === 'folder'
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showMessage('成功', data.message);
+                loadVideos();
+            } else {
+                showMessage('错误', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting item:', error);
+            showMessage('错误', '删除失败');
+        });
+    }
 }
 
 function setupDragAndDrop() {
@@ -990,11 +1251,15 @@ function updateLoginStatus(platform, isLoggedIn) {
 }
 
 function openDirectory(path) {
+    console.log('openDirectory called with path:', path);
     const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
     const isWindows = navigator.platform.toUpperCase().indexOf('WIN') >= 0;
     
+    console.log('Platform check - isMac:', isMac, 'isWindows:', isWindows, 'navigator.platform:', navigator.platform);
+    
     if (isMac) {
         const script = `tell application "Finder" to open POSIX file "${path}"`;
+        console.log('AppleScript script:', script);
         
         fetch('/api/storage/open-directory', {
             method: 'POST',
@@ -1005,13 +1270,20 @@ function openDirectory(path) {
         })
         .then(response => response.json())
         .then(data => {
+            console.log('Open directory response:', data);
             if (!data.success) {
                 showMessage('打开目录失败', '打开目录失败：' + data.message);
             }
+        })
+        .catch(error => {
+            console.error('Error opening directory:', error);
+            showMessage('错误', '打开目录失败：' + error.message);
         });
     } else if (isWindows) {
+        console.log('Opening with file:// protocol (Windows)');
         window.open(`file:///${path.replace(/\\/g, '/')}`);
     } else {
+        console.log('Opening with file:// protocol (Linux/Other)');
         window.open(`file://${path}`);
     }
 }

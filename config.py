@@ -7,8 +7,11 @@ class Config:
     
     REDIS_HOST = 'localhost'
     REDIS_PORT = 6379
-    REDIS_DB = 0
+    REDIS_DB = 0  # 生产环境数据库
     REDIS_PASSWORD = None
+    
+    # 测试环境配置
+    TEST_REDIS_DB = 1  # 测试环境数据库（与生产环境隔离）
     
     DEFAULT_STORAGE_PATH = os.path.join(os.path.expanduser('~'), 'Downloads', 'Videos')
     
