@@ -33,9 +33,9 @@ pip3 install -r requirements.txt
 
 # 创建必要的目录
 mkdir -p logs
-mkdir -p static/js
-mkdir -p templates
+mkdir -p frontend/static/js
+mkdir -p frontend/templates
 
 # 启动Flask应用
 echo "启动Flask应用...with port 5001"
-python3 app.py
+python3 backend/app.py

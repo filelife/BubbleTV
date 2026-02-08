@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from video_downloader import VideoDownloader
-from redis_manager import RedisManager
+from backend.core.video_downloader import VideoDownloader
+from backend.core.redis_manager import RedisManager
 
 def test_douyin_download():
     print("=" * 60)

@@ -10,14 +10,14 @@ import sys
 import os
 
 # 添加项目根目录到Python路径
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from redis_manager import RedisManager
-from video_downloader import VideoParser, VideoDownloader
-from video_scraper import VideoScraper
-from video_transcoder import VideoTranscoder
-from platform_auth import PlatformAuth
-from storage_manager import StorageManager
+from backend.core.redis_manager import RedisManager
+from backend.core.video_downloader import VideoParser, VideoDownloader
+from backend.core.video_scraper import VideoScraper
+from backend.core.video_transcoder import VideoTranscoder
+from backend.platforms.platform_auth import PlatformAuth
+from backend.core.storage_manager import StorageManager
 
 # ⚠️ 重要：所有测试必须使用测试数据库！
 # 使用 use_test_db=True 来确保测试和生产环境隔离

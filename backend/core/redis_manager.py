@@ -1,7 +1,7 @@
 import redis
 import json
 from datetime import datetime
-from config import Config
+from config.config import Config
 
 class RedisManager:
     def __init__(self, use_test_db=False):

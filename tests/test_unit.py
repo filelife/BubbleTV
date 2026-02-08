@@ -7,14 +7,12 @@
 import unittest
 import sys
 import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# 添加项目路径
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from redis_manager import RedisManager
-from video_downloader import VideoParser
-from video_scraper import VideoScraper
-from config import Config
+from backend.core.redis_manager import RedisManager
+from backend.core.video_downloader import VideoParser
+from backend.core.video_scraper import VideoScraper
+from backend.config.config import Config
 import json
 import time
 

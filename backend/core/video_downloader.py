@@ -6,8 +6,8 @@ import http.cookiejar
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 import yt_dlp
-from video_scraper import VideoScraper
-from video_transcoder import VideoTranscoder
+from .video_scraper import VideoScraper
+from .video_transcoder import VideoTranscoder
 
 class VideoParser:
     def __init__(self):

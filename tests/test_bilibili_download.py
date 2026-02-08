@@ -6,11 +6,11 @@
 
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from redis_manager import RedisManager
-from video_downloader import VideoDownloader
-from config import Config
+from backend.core.redis_manager import RedisManager
+from backend.core.video_downloader import VideoDownloader
+from backend.config.config import Config
 
 def test_bilibili_download():
     """测试B站下载"""

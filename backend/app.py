@@ -1,17 +1,23 @@
 from flask import Flask, render_template, jsonify, request
-from redis_manager import RedisManager
-from video_downloader import VideoParser, VideoDownloader
-from platform_auth import PlatformAuth
-from video_transcoder import VideoTranscoder
-from storage_manager import StorageManager
-from config import Config
+from core.redis_manager import RedisManager
+from core.video_downloader import VideoParser, VideoDownloader
+from platforms.platform_auth import PlatformAuth
+from core.video_transcoder import VideoTranscoder
+from core.storage_manager import StorageManager
+from config.config import Config
 import uuid
 import os
 import threading
 import time
 
+# 获取项目根目录
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = Config.SECRET_KEY
+# 配置模板和静态文件路径
+app.template_folder = os.path.join(BASE_DIR, 'frontend', 'templates')
+app.static_folder = os.path.join(BASE_DIR, 'frontend', 'static')
 
 redis_manager = RedisManager()
 video_parser = VideoParser()

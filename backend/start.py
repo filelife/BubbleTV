@@ -56,7 +56,10 @@ def main():
     print('=' * 60)
     
     try:
-        subprocess.run([sys.executable, 'app.py'])
+        # 获取当前脚本所在目录
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        app_path = os.path.join(script_dir, 'app.py')
+        subprocess.run([sys.executable, app_path])
     except KeyboardInterrupt:
         print('\n\n👋 服务器已停止')
     except Exception as e:

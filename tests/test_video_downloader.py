@@ -8,11 +8,15 @@ import os
 import sys
 import unittest
 import time
+
+# 添加项目根目录到Python路径
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from unittest.mock import Mock, patch
-from video_scraper import VideoScraper
-from video_downloader import VideoParser, VideoDownloader
-from video_transcoder import VideoTranscoder
-from redis_manager import RedisManager
+from backend.core.video_scraper import VideoScraper
+from backend.core.video_downloader import VideoParser, VideoDownloader
+from backend.core.video_transcoder import VideoTranscoder
+from backend.core.redis_manager import RedisManager
 
 class TestDouyinVideoDownload(unittest.TestCase):
     def setUp(self):

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 import sys
-sys.path.append('/Users/rockfile/Documents/Bytedance/BusinessProj/AutoDownloadVideoApp')
-
-from redis_manager import RedisManager
-from video_downloader import VideoDownloader
-from datetime import datetime
 import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from backend.core.redis_manager import RedisManager
+from backend.core.video_downloader import VideoDownloader
+from datetime import datetime
 
 def test_bangumi_download():
     test_url = 'https://www.bilibili.com/bangumi/play/ep316163/?share_source=copy_web'

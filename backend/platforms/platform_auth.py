@@ -8,8 +8,8 @@ import time
 import json
 import pickle
 import os
-from redis_manager import RedisManager
-from config import Config
+from core.redis_manager import RedisManager
+from config.config import Config
 
 class PlatformAuth:
     def __init__(self, redis_manager):

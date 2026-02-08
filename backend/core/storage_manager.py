@@ -2,8 +2,8 @@ import os
 import shutil
 import platform
 import subprocess
-from redis_manager import RedisManager
-from config import Config
+from core.redis_manager import RedisManager
+from config.config import Config
 
 class StorageManager:
     def __init__(self, redis_manager):
